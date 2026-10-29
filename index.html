@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRIDGE - Personal Data Hub</title>
+    
+    <!-- 最適化4: Firebase通信初速の最大化（プリコネクト） -->
+    <link rel="preconnect" href="https://firestore.googleapis.com">
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
+    
+    <style>
+        /* 装飾を排した計器盤（コンソール）風のダークテーマ */
+        :root { --bg: #121212; --text: #e0e0e0; --accent: #00bcd4; --danger: #f44336; }
+        body { background-color: var(--bg); color: var(--text); font-family: monospace, sans-serif; padding: 20px; text-align: center; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 30px; letter-spacing: 2px; }
+        
+        /* フラット構造を活かした並列ルーティング */
+        .nav-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 40px; }
+        .btn { display: block; padding: 15px; background: #1e1e1e; color: var(--accent); text-decoration: none; border: 1px solid #333; border-radius: 4px; font-weight: bold; }
+        .btn:active { background: #333; }
+        .btn-argus { color: #ff9800; border-color: #ff9800; } /* 監視コンソールのみ警告色 */
+        
+        /* インクレディブル・ボタン（強制監査） */
+        .btn-incredible { width: 100%; padding: 20px; background: #2b0000; color: var(--danger); border: 2px solid var(--danger); font-size: 1.1em; cursor: pointer; border-radius: 4px; font-weight: bold; margin-bottom: 20px; }
+        .btn-incredible:active { background: #4a0000; }
+        
+        /* 同期結果のフィードバック画面 */
+        #status-board { padding: 15px; background: #000; border: 1px dashed #555; text-align: left; font-size: 0.9em; min-height: 80px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>BRIDGE</h1>
+        
+        <div class="nav-grid">
+            <a href="tanka.html" class="btn">短歌</a>
+            <a href="memo.html" class="btn">メモ</a>
+            <a href="alexandria.html" class="btn">アレキサンドリア (大図書館)</a>
+            <a href="argus.html" class="btn btn-argus">アルゴス (機関室)</a>
+        </div>
+
+        <button id="btn-incredible" class="btn-incredible">
+            INCREDIBLE SYNC (強制監査・同期)
+        </button>
+
+        <div id="status-board">
+            [SYSTEM] Standby...
+        </div>
+    </div>
+
+    <!-- 共通設定と同期エンジンの読み込み（フラット構造） -->
+    <script src="firebase-config.js"></script>
+    <script src="incredible.js"></script>
+    
+    <script>
+        // インクレディブル・ボタンの物理結線とフィードバック出力
+        document.getElementById('btn-incredible').addEventListener('click', async () => {
+            const board = document.getElementById('status-board');
+            board.innerHTML = '[SYSTEM] Incredible Engine 起動中...<br>IndexedDBとFirebaseの全件照合を実行しています...';
+            
+            try {
+                // incredible.js 側に実装する強制同期メソッドを叩く
+                const result = await IncredibleEngine.forceSync();
+                board.innerHTML = `[SUCCESS] 監査完了。<br>クラウドへ退避: ${result.pushed} 件<br>ローカルへ補完: ${result.pulled} 件`;
+            } catch (error) {
+                board.innerHTML = `<span style="color:red;">[ERROR] 監査失敗: ${error.message}</span>`;
+            }
+        });
+    </script>
+</body>
+</html>
