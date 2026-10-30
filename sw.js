@@ -9,12 +9,13 @@ const urlsToCache = [
   './incredible.js',
   './firebase-config.js',
   './argus.html',
-  './tanka-image.html',
-  './tanka-series.html',
+  './saikiyo.html',
+  './tanzaku.html',
+  './rensaku.html',
   './ifrit18.html',
   './ifrit19.html',
   './ifrit20.html',
-  './alexandria.html'
+  './alex.html'
 ];
 
 // インストール時に全ファイルをキャッシュへ格納
