@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+
+<title>さいきよ</title>
+<style>
+/* =========================================
+   2026.08.09 浄化・パレット完全換装版
+   2026.08.11 リストをつくる机 D&D換装版
+   2026.08.15 発着ターミナル情報設計＆UI統一改修版
+   2026.08.15 合言葉入力キーボード（IME）修正版
+   2026.08.15 編集室インラインアクション改修版
+   2026.08.15 スマートスクロール（自動ピン留め）対応版
+   2026.08.15 空間分割（tanka/memoマルチテナント）対応版
+   2026.08.16 取扱説明書外部化（案A）対応版
+   2026.08.17 AND/OR複合検索＆リストD&D完全手触り特化（ひらひら根絶）版
+   2026.08.17 運用メニュー「管制」への全面ネーミング換装版
+   2026.08.18 カスタムスクロールバー＆自動エッジスクロール対応版
+   2026.08.19 メモUI一新＆Pull-to-Refresh(強制再読み込み)根絶版
+   2026.08.19 メモ封鎖・タグ差分更新（完全目視UI）対応版
+   2026.08.19 編集室UI配置最適化（アーカイブ最上段）版
+   2026.08.19 検索フリーズ根絶（排他制御）版
+   2026.08.22 内部コード完全日本語同期版（kansei/settei/mitsuyu/henshushitsu）
+   2026.08.22 リスト机D&Dスクロール干渉解消（番号持ち手化）版
+   2026.08.22 データ表示フィルター拡張版（未発表/リスト/タグ無し）
+   2026.08.22 推敲デスク機能（3段階トグル検索固定）実装版
+   2026.08.22 右端ハンバーガー持ち手化＆エッジスクロール可変速化版
+   ========================================= */
+:root {
+  --color-A: #111111;
+  --color-B: #FFFFFF;
+  --color-C: #E0E0E0;
+  --font-family: sans-serif;
+  --border-radius: 0px;
+}
+
+[data-radius="round"] {
+  --border-radius: 8px;
+}
+
+/* --- 新パレット用デザイン --- */
+.color-control-panel {
+  margin-bottom: 20px;
+  color: var(--color-A);
+}
+.color-control-panel input[type="color"] {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #ccc;
+  border-radius: 8px; 
+  padding: 0;
+  cursor: pointer;
+  background-color: transparent;
+}
+.color-control-panel input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.color-control-panel input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 8px;
+}
+.theme-switches button {
+  border-radius: 4px;
+  border: 1px solid var(--color-A);
+  background: var(--color-B);
+  color: var(--color-A);
+  transition: opacity 0.2s;
+}
+.theme-switches button:hover {
+  opacity: 0.7;
+}
+
+/* --- ベースデザイン --- */
+html, body {
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--color-B);
+  color: var(--color-A);
+  font-family: var(--font-family);
+  overscroll-behavior-y: none;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+#app { display: flex; flex-direction: column; height: 100%; width: 100%; }
+
+header, #console, button {
+  flex-shrink: 0;
+}
+header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 15px; border-bottom: 1px solid var(--color-A);
+  font-weight: bold;
+  background-color: var(--color-C); color: var(--color-A);
+}
+header button { background: none; border: none; color: var(--color-A); font-size: 1.2rem; cursor: pointer; margin-right: 15px; }
+#header-title { color: var(--color-A); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 4px; }
+#btn-space-toggle { font-size: 1rem; font-weight: bold; padding: 4px 8px; border: 1px solid var(--color-A); border-radius: var(--border-radius); background: var(--color-B); color: var(--color-A); cursor: pointer; }
+
+#timeline-container { flex: 1; overflow-y: auto; padding: 15px; }
+
+.view-mode-wrap { display: flex; flex-direction: column; gap: 20px; }
+.view-mode-nowrap { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 20px; gap: 20px; }
+.view-mode-nowrap .item { scroll-snap-align: start; flex: 0 0 90%; max-height: 80vh; overflow-y: auto; }
+
+.item {
+  margin-bottom: 20px;
+  word-break: break-all;
+  position: relative;
+  padding-left: 0; 
+  transition: padding-left 0.2s ease;
+  cursor: pointer;
+  border-radius: var(--border-radius);
+}
+.item-content { font-size: 1.1rem; line-height: 1.8; white-space: pre-wrap; cursor: pointer; }
+.is-archive { background-color: var(--color-C); color: var(--color-A); padding: 10px; }
+.meta-data { display: none; margin-top: 10px; font-size: 0.9rem; opacity: 0.8; line-height: 1.5; }
+.item.open .meta-data { display: block; }
+
+#console {
+  background-color: var(--color-B);
+  border-top: 1px solid var(--color-A); padding: 10px; display: flex; flex-direction: column; gap: 10px;
+}
+#input-content, #input-tags {
+  width: 100%; background: var(--color-B); color: var(--color-A); box-sizing: border-box;
+  border: 1px solid var(--color-A); padding: 10px; font-family: inherit; font-size: 18px;
+  border-radius: var(--border-radius);
+}
+#input-content { height: 3em; resize: none; }
+
+.buttons { display: flex; justify-content: space-between; gap: 5px; }
+.buttons button {
+  flex: 1; padding: 12px 0; font-weight: bold;
+  background: var(--color-A); color: var(--color-B); border: 1px solid var(--color-A);
+  transition: opacity 0.3s ease; cursor: pointer; font-size: 18px;
+  white-space: nowrap;
+  border-radius: var(--border-radius);
+}
+.buttons button:disabled { background: var(--color-C); color: var(--color-A); border-color: var(--color-C); pointer-events: none; }
+.buttons button.active-btn { background: var(--color-A); color: var(--color-B); }
+
+.selection-marker {
+  display: none;
+  position: absolute;
+  left: 0px; 
+  top: 10px;
+  font-size: 1.2rem;
+  color: var(--color-A);
+}
+
+.item.selecting, #timeline-container.select-mode .item { padding-left: 35px; }
+.item.selecting .selection-marker, #timeline-container.select-mode .selection-marker { display: block; }
+.selection-marker::before { content: "□"; }
+.item.selected .selection-marker::before { content: "☑"; }
+
+.panel {
+  display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100dvh;
+  background: var(--color-B); z-index: 200; overflow-y: auto; padding: 20px; padding-bottom: 120px; box-sizing: border-box;
+}
+.panel.active { display: block; }
+.panel h2 { margin-bottom: 20px; border-bottom: 1px solid var(--color-A); padding-bottom: 5px; color: var(--color-A); }
+.panel button.close-btn { position: absolute; top: 15px; right: 20px; background: transparent; border: none; color: var(--color-A); font-size: 1.5rem; cursor: pointer; }
+.panel-btn {
+  display: block; width: 100%; padding: 18px; margin-bottom: 12px; box-sizing: border-box;
+  background: var(--color-B); color: var(--color-A); border: 1px solid var(--color-A);
+  font-size: 1.2rem; font-weight: bold; text-align: left; cursor: pointer;
+  border-radius: var(--border-radius);
+}
+.panel-btn.inverted { background: var(--color-B); color: var(--color-A); text-align: center; }
+.panel-btn.selected { background: var(--color-A); color: var(--color-B); border: 2px solid var(--color-A); text-align: center; }
+
+.radio-group { margin-bottom: 20px; color: var(--color-A); }
+.radio-group label { display: block; margin-bottom: 10px; font-size: 1.1rem; }
+select.dropdown, input.dropdown { width: 100%; padding: 10px; font-size: 1.1rem; background: var(--color-B); color: var(--color-A); border: 1px solid var(--color-A); font-family: inherit; border-radius: var(--border-radius); }
+
+.preview-area {
+  background: var(--color-A); color: var(--color-B); padding: 15px; margin-bottom: 10px;
+  max-height: 25vh; overflow-y: auto; font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap;
+  border-radius: var(--border-radius);
+}
+
+/* 編集室UI：メモ封鎖時のグレーアウト設定 */
+#amu-memo-input:disabled {
+  background-color: var(--color-C);
+  color: var(--color-A);
+  opacity: 0.6;
+}
+#amu-btn-memo:disabled {
+  background-color: var(--color-C);
+  color: var(--color-A);
+  border-color: var(--color-C);
+  pointer-events: none;
+}
+
+/* --- ネイティブスクロールバーの隠蔽（リスト机用） --- */
+#panel-list-editor {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-y: none;
+  overflow-anchor: none; /* ブラウザのスクロール補正暴走を強制停止 */
+}
+#panel-list-editor::-webkit-scrollbar {
+  display: none;
+}
+
+#panel-list-editor { display: none; }
+#panel-list-editor.active { display: block; }
+#panel-list-editor input, #panel-list-editor textarea {
+  width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box;
+  background: var(--color-B); color: var(--color-A); border: 1px solid var(--color-A); font-family: inherit; font-size: 18px;
+  border-radius: var(--border-radius);
+}
+#panel-list-editor textarea { resize: none; }
+#list-items { border: 1px solid var(--color-A); padding: 5px; margin-bottom: 10px; background: var(--color-B); border-radius: var(--border-radius); position: relative; overflow-anchor: none; }
+
+/* D&D対応リストアイテム */
+.list-item-edit { 
+  display: flex; align-items: center; gap: 8px; margin-bottom: 5px; border: 1px solid var(--color-A); padding: 8px; 
+  background: var(--color-B); border-radius: var(--border-radius);
+  box-sizing: border-box;
+  transition: none !important;
+}
+/* 番号は単なる表示用に */
+.list-item-edit .item-num {
+  width: 24px; text-align: center; font-weight: bold; color: var(--color-A); font-size: 14px; flex-shrink: 0; pointer-events: none;
+}
+.list-item-edit span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--color-A); font-size: 15px; }
+
+/* 新しい右端の持ち手（ハンバーガー） */
+.list-item-edit .item-drag-handle {
+  width: 44px; text-align: center; font-weight: bold; color: var(--color-A); font-size: 18px; flex-shrink: 0;
+  background-color: var(--color-C); padding: 6px 0; border-radius: 4px;
+  cursor: grab; user-select: none; touch-action: none;
+}
+.list-item-edit.dragging .item-drag-handle { cursor: grabbing; }
+
+/* 抜け殻（プレースホルダー） */
+.list-item-placeholder {
+  background-color: var(--color-C); border: 1px dashed var(--color-A); border-radius: var(--border-radius); box-sizing: border-box; margin-bottom: 5px;
+}
+
+/* ドラッグ中の実体 - 装飾的な浮き上がりや影を全廃 */
+.list-item-edit.dragging {
+  position: fixed; pointer-events: none; opacity: 1; transform: none; box-shadow: none; z-index: 1000;
+  border: 2px solid var(--color-A); background: var(--color-B);
+}
+
+.desk-ctrls { display: flex; gap: 5px; flex: none; margin-top: 10px; }
+.desk-ctrls button { flex: 1; padding: 16px 0; background: var(--color-B); color: var(--color-A); border: 1px solid var(--color-A); font-weight: bold; cursor: pointer; font-size: 18px; border-radius: var(--border-radius); }
+
+.kansei-submenu {
+  display: none;
+  background: var(--color-C);
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: var(--border-radius);
+  color: var(--color-A);
+  border: 1px solid var(--color-A);
+}
+.kansei-submenu.open {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.kansei-sub-left { display: flex; flex-direction: column; gap: 10px; font-size: 1.1rem; }
+.kansei-sub-right { display: flex; justify-content: flex-end; }
+.kansei-sub-right button {
+  padding: 10px 20px;
+  background: var(--color-A);
+  color: var(--color-B);
+  border: none;
+  font-weight: bold;
+  font-size: 1.1rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+}
+</style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <button id="btn-settei">≡</button>
+      <button id="btn-fullscreen">⛶</button>
+      <button id="btn-space-toggle" style="margin-left: 10px;">tanka</button>
+    </div>
+    <div id="header-title">さいきよ</div>
+  </header>
+
+  <div id="timeline-container" class="view-mode-wrap"></div>
+
+  <div id="console">
+    <textarea id="input-content" placeholder="・・・" spellcheck="false" autocomplete="new-password" autocorrect="off" autocapitalize="off" data-lpignore="true"></textarea>
+    <textarea id="input-tags" rows="1" placeholder="タグは空白区切り" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" data-lpignore="true" style="resize: none; overflow: hidden; white-space: nowrap;"></textarea>
+    <div class="buttons">
+      <button id="btn-kansei" data-action="kansei">管制</button>
+      <button id="btn-amu" disabled>取消</button>
+      <button id="btn-send">送る</button>
+      <button id="btn-search">検索</button>
+      <button id="btn-tweet" disabled>呟く</button>
+    </div>
+  </div>
+</div>
+
+<div id="panel-settei" class="panel">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--color-A); padding-bottom: 5px;">
+    <h2 style="margin: 0; border: none; padding: 0;">設定</h2>
+    <button onclick="closePanels()" style="background: transparent; border: none; color: var(--color-A); font-size: 1.2rem; font-weight: bold; cursor: pointer;">戻る</button>
+  </div>
+
+  <div id="stats-display" style="margin-bottom: 20px; font-size: 1.1rem; color: var(--color-A); text-align: center; font-weight: bold; background: var(--color-C); padding: 10px; border-radius: var(--border-radius);">
+    総コンテンツ数: <span id="count-tanka">0</span> / リスト数: <span id="count-list">0</span>
+  </div>
+
+  <div class="radio-group">
+    <h3>データ表示フィルター</h3>
+    <label><input type="radio" name="filter-mode" value="work" checked> 作品のみ</label>
+    <label><input type="radio" name="filter-mode" value="all"> 作品とアーカイブ</label>
+    <label><input type="radio" name="filter-mode" value="archive"> アーカイブのみ</label>
+    <label><input type="radio" name="filter-mode" value="unpublished"> 未発表作のみ</label>
+    <label><input type="radio" name="filter-mode" value="list"> リストのみ</label>
+    <label><input type="radio" name="filter-mode" value="notag"> タグ無しのみ</label>
+  </div>
+
+  <div class="radio-group">
+    <h3>タイムライン表示切替</h3>
+    <label><input type="radio" name="view-mode" value="wrap" checked> 折り返しあり</label>
+    <label><input type="radio" name="view-mode" value="nowrap"> 折り返しなし</label>
+  </div>
+
+  <div class="radio-group">
+    <h3>書体変更</h3>
+    <label><input type="radio" name="font-mode" value="sans-serif" checked> ゴシック体</label>
+    <label><input type="radio" name="font-mode" value="serif"> 明朝体</label>
+  </div>
+
+  <hr style="border-color: var(--color-A); margin: 30px 0;">
+
+  <div id="engine-room-controls" style="display: flex; flex-direction: column; gap: 20px;">
+    <div class="radio-group">
+      <h3>角の丸み（UIデザイン）</h3>
+      <label><input type="radio" name="radius-mode" value="square" checked> 四角</label>
+      <label><input type="radio" name="radius-mode" value="round"> 丸</label>
+    </div>
+    <div class="radio-group">
+      <h3>タイムマシンのボタン</h3>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="date" id="date-jump-input" class="dropdown" style="flex: 1; padding: 10px;">
+        <button class="panel-btn inverted" style="margin: 0; padding: 10px 15px; width: auto;" onclick="jumpToDate()">でかける</button>
+        <button class="panel-btn" style="margin: 0; padding: 10px 15px; width: auto;" onclick="returnToLatest()">かえる</button>
+      </div>
+    </div>
+
+    <div class="color-control-panel">
+      <h3>テーマカラー</h3>
+
+      <div class="theme-switches" style="margin-bottom: 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
+        <button id="btn-monochrome" type="button" style="padding: 10px 15px; cursor: pointer;">白黒</button>
+        <button id="btn-silver" type="button" style="padding: 10px 15px; cursor: pointer;">銀鼠</button>
+      </div>
+
+      <div class="palettes-desk" style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="palette-tool">
+          <span style="font-size: 0.85em; opacity: 0.8;">1色で自動生成</span>
+          <div style="margin-top: 5px;">
+            <input type="color" id="hole-auto" title="基準色">
+          </div>
+        </div>
+
+        <div class="palette-tool">
+          <span style="font-size: 0.85em; opacity: 0.8;">3色を自作</span>
+          <div style="margin-top: 5px; display: flex; gap: 5px;">
+            <input type="color" id="hole-manual-main" title="主調色(文字)">
+            <input type="color" id="hole-manual-sub" title="副調色(枠・アーカイブ)">
+            <input type="color" id="hole-manual-bg" title="地の色(背景)">
+          </div>
+        </div>
+      </div>
+    </div>       
+    <h3>基地名変更（リネーム）</h3>
+    <div style="display: flex; gap: 10px;">
+      <input type="text" id="rename-input" class="dropdown" style="flex: 1; padding: 10px;" placeholder="現在の基地名を入力">
+      <button class="panel-btn" style="margin: 0; padding: 10px 15px; width: auto;" onclick="renameApp()">変更</button>
+    </div>
+
+    <div class="radio-group">
+      <h3>合言葉（空欄でロック解除）</h3>
+      <div style="display: flex; gap: 10px;">
+        <input type="text" id="setup-passphrase-input" class="dropdown" style="flex: 1; padding: 10px;" placeholder="新しい合言葉">
+        <button class="panel-btn" style="margin: 0; padding: 10px 15px; width: auto;" onclick="setPassphrase()">設定</button>
+      </div>
+    </div>
+
+    <hr style="border-color: var(--color-A); margin: 10px 0;">
+
+    <button class="panel-btn inverted" style="margin-bottom: 0;" onclick="window.open('about.html', '_blank')">取扱説明書を読む</button>
+    <button class="panel-btn inverted" style="margin-bottom: 30px;" onclick="resetSettings()">初期設定に戻す</button>
+  </div>
+</div>
+
+<div id="panel-henshushitsu" class="panel">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--color-A); padding-bottom: 5px;">
+    <h2 style="margin: 0; border: none; padding: 0;">編集室</h2>
+    <button onclick="closePanels(); exitSelectionMode(); cleanupAmuInline();" style="background: transparent; border: none; color: var(--color-A); font-size: 1.2rem; font-weight: bold; cursor: pointer;">戻る</button>
+  </div>
+
+  <div id="amu-preview" class="preview-area"></div>
+  <button class="panel-btn inverted" style="margin-bottom:20px; padding:10px;" onclick="openExpandedReaderFromAmu()">広げて読む</button>
+
+  <button class="panel-btn amu-action-btn" data-type="status" data-val="archive" onclick="toggleAmuAction(this)">アーカイブに送る</button>
+  <button class="panel-btn amu-action-btn" data-type="status" data-val="work" onclick="toggleAmuAction(this)">作品に送る</button>
+
+  <button class="panel-btn amu-action-btn" data-type="publish" data-val="published" onclick="toggleAmuAction(this)" style="margin-top:10px;">既発表にする</button>
+  <button class="panel-btn amu-action-btn" data-type="publish" data-val="unpublished" onclick="toggleAmuAction(this)">未発表にする</button>
+
+  <button class="panel-btn amu-action-btn" data-type="copy" data-val="true" onclick="toggleAmuAction(this)" style="margin-top:10px; margin-bottom:20px;">クリップボードにコピー</button>
+
+  <hr style="border-color: var(--color-A); margin: 20px 0;">
+
+  <!-- メモ入力＆更新エリア -->
+  <div style="margin-bottom: 8px;">
+    <textarea id="amu-memo-input" rows="3" placeholder="メモ（複数選択時は編集不可）" spellcheck="false" autocomplete="new-password" style="width: 100%; background: var(--color-B); color: var(--color-A); border: 1px solid var(--color-A); padding: 10px; font-family: inherit; font-size: 16px; border-radius: var(--border-radius); resize: vertical; margin-bottom: 10px; box-sizing: border-box;"></textarea>
+    <button class="panel-btn amu-action-btn" id="amu-btn-memo" data-type="memo" data-val="true" onclick="toggleAmuAction(this)">メモを更新する</button>
+  </div>
+
+  <!-- タグ入力＆更新エリア -->
+  <div style="margin-bottom: 8px;">
+    <textarea id="amu-tag-input" rows="1" placeholder="タグ（空白区切り）" autocomplete="new-password" spellcheck="false" style="width: 100%; background: var(--color-B); color: var(--color-A); border: 1px solid var(--color-A); padding: 10px; font-family: inherit; font-size: 16px; border-radius: var(--border-radius); resize: none; overflow: hidden; margin-bottom: 10px; box-sizing: border-box;"></textarea>
+    <button class="panel-btn amu-action-btn" id="amu-btn-tag" data-type="tag" data-val="true" onclick="toggleAmuAction(this)">タグを更新する</button>
+  </div>
+
+  <hr style="border-color: var(--color-A); margin: 20px 0;">
+
+  <button class="panel-btn amu-action-btn" data-type="create_list" data-val="true" onclick="toggleAmuAction(this)">新しいリストを編む</button>
+  <button class="panel-btn amu-action-btn" data-type="image" data-val="true" onclick="toggleAmuAction(this)">画像を作る</button>
+</div>
+
+<div id="panel-kansei" class="panel">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--color-A); padding-bottom: 5px;">
+    <h2 style="margin: 0; border: none; padding: 0;">管制</h2>
+    <button onclick="closePanels()" style="background: transparent; border: none; color: var(--color-A); font-size: 1.2rem; font-weight: bold; cursor: pointer;">戻る</button>
+  </div>
+
+  <button class="panel-btn" onclick="toggleKanseiMenu('menu-dasshutsu')">射出</button>
+  <div id="menu-dasshutsu" class="kansei-submenu">
+    <div class="kansei-sub-left">メールを打ち出します</div>
+    <div class="kansei-sub-right"><button onclick="executeKansei('dasshutsu')">決定</button></div>
+  </div>
+
+  <button class="panel-btn" onclick="toggleKanseiMenu('menu-haishutsu')">撤収</button>
+  <div id="menu-haishutsu" class="kansei-submenu">
+    <div class="kansei-sub-left">
+      <label><input type="radio" name="haishutsu-target" value="archive" checked> アーカイブのみ</label>
+      <label><input type="radio" name="haishutsu-target" value="work"> 作品のみ</label>
+      <label><input type="radio" name="haishutsu-target" value="all"> アーカイブと作品</label>
+      <div style="margin-top: 10px; font-size: 0.95rem;">コピーを作り基地から削除します</div>
+    </div>
+    <div class="kansei-sub-right"><button onclick="executeKansei('haishutsu')">決定</button></div>
+  </div>
+
+  <hr style="border-color: var(--color-A); margin: 30px 0;">
+
+  <button class="panel-btn" onclick="toggleKanseiMenu('menu-hannyu')">回収</button>
+  <div id="menu-hannyu" class="kansei-submenu">
+    <div class="kansei-sub-left">バックアップファイルを差分取り込みします</div>
+    <div class="kansei-sub-right"><button onclick="document.getElementById('import-file').click()">決定</button></div>
+  </div>
+  <input type="file" id="import-file" style="display:none" accept=".json,.txt" onchange="kanseiAction('import', event)">
+
+  <button class="panel-btn" onclick="toggleKanseiMenu('menu-mitsuyu')">密輸</button>
+  <div id="menu-mitsuyu" class="kansei-submenu">
+    <div class="kansei-sub-left">テキストを一括入力します</div>
+    <div class="kansei-sub-right"><button onclick="openMitsuyuPanel()">決定</button></div>
+  </div>
+
+  <hr style="border-color: var(--color-A); margin: 30px 0;">
+
+  <button class="panel-btn" onclick="toggleKanseiMenu('menu-bunshin')">退避</button>
+  <div id="menu-bunshin" class="kansei-submenu">
+    <div class="kansei-sub-left">
+      <label><input type="radio" name="bunshin-target" value="archive"> アーカイブのみ</label>
+      <label><input type="radio" name="bunshin-target" value="work"> 作品のみ</label>
+      <label><input type="radio" name="bunshin-target" value="all" checked> アーカイブと作品</label>
+      <div style="margin-top: 10px; font-size: 0.95rem;">コピーファイルを作ります</div>
+    </div>
+    <div class="kansei-sub-right"><button onclick="executeKansei('bunshin')">決定</button></div>
+  </div>
+
+  <button class="panel-btn" onclick="toggleKanseiMenu('menu-chushutsu')">抽出</button>
+  <div id="menu-chushutsu" class="kansei-submenu">
+    <div style="font-size: 0.95rem; margin-bottom: 10px; color: var(--color-A);">期間を決めて撤収、退避します</div>
+
+    <div style="display: flex; gap: 5px; align-items: center; margin-bottom: 15px;">
+      <input type="datetime-local" id="chushutsu-start" class="dropdown" style="flex: 1; padding: 10px;">
+      <span style="color: var(--color-A);">〜</span>
+      <input type="datetime-local" id="chushutsu-end" class="dropdown" style="flex: 1; padding: 10px;">
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+      <button class="panel-btn" style="margin: 0; padding: 15px; flex: 1; border-color: var(--color-A);" onclick="executeChushutsuAction('bunshin')">期間を退避</button>
+      <button class="panel-btn" style="margin: 0; padding: 15px; flex: 1; border-color: var(--color-A); color: var(--color-B); background: var(--color-A);" onclick="executeChushutsuAction('haishutsu')">期間を撤収</button>
+    </div>
+  </div>
+
+  <div id="wrap-jufuku">
+    <button class="panel-btn" id="btn-jufuku" onclick="toggleKanseiMenu('menu-jufuku')">重複</button>
+    <div id="menu-jufuku" class="kansei-submenu">
+      <div class="kansei-sub-left">内容が同じものを削除します</div>
+      <div class="kansei-sub-right"><button onclick="removeDuplicates()">決定</button></div>
+    </div>
+  </div>
+</div>
+
+<div id="panel-mitsuyu" class="panel">
+ <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--color-A); padding-bottom: 5px;">
+    <h2 style="margin: 0; border: none; padding: 0;">密輸</h2>
+    <button onclick="closePanels()" style="background: transparent; border: none; color: var(--color-A); font-size: 1.2rem; font-weight: bold; cursor: pointer;">戻る</button>
+  </div>
+  <p style="font-size: 0.95rem; line-height: 1.5; color: var(--color-A); margin-bottom: 15px;">
+    複数のテキストを一度に読み込みます。<br>
+    ※空行（改行2回）で自動的に別々のデータとして分割されます。
+  </p>
+  <textarea id="input-mitsuyu" placeholder="ここにペースト..." spellcheck="false" style="width: 100%; height: 40vh; background: var(--color-B); color: var(--color-A); border: 1px solid var(--color-A); padding: 10px; font-family: inherit; font-size: 14px; border-radius: var(--border-radius); resize: none;"></textarea>
+  <div class="desk-ctrls" style="margin-top:20px;">
+    <button onclick="closePanels()">取消(戻る)</button>
+    <button onclick="executeMitsuyu()" style="background:var(--color-A); color:var(--color-B);">取り込む</button>
+  </div>
+</div>
+
+<div id="panel-list-editor" class="panel">
+  <div id="list-editor-custom-scroll" style="position: fixed; top: 0; right: 0; width: 8px; height: 100dvh; pointer-events: none; z-index: 1000; display: none;">
+    <div id="list-editor-custom-thumb" style="width: 100%; background-color: var(--color-A); position: absolute; right: 0; top: 0; border-radius: 4px;"></div>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--color-A); padding-bottom: 5px;">
+    <h2 style="margin: 0; border: none; padding: 0;">リストをつくる机</h2>
+    <button onclick="closeListEditor()" style="background: transparent; border: none; color: var(--color-A); font-size: 1.2rem; font-weight: bold; cursor: pointer;">戻る</button>
+  </div>
+  
+  <p style="font-size: 1.1rem; color: var(--color-A); margin-top: 0; margin-bottom: 15px;">右端の「≡」をタップしてドラッグアンドドロップしてください</p>
+  
+  <input type="text" id="list-name" placeholder="無題" spellcheck="false" autocomplete="nope" autocorrect="off" autocapitalize="off" data-lpignore="true">
+  <button class="panel-btn inverted" style="margin-bottom:5px; padding:10px;" onclick="openExpandedReaderFromList()">広げて読む</button>
+  <div id="list-items"></div>
+  <textarea id="list-memo" rows="2" placeholder="メモ" spellcheck="false" autocomplete="new-password" autocorrect="off" autocapitalize="off" data-lpignore="true"></textarea>
+  <textarea id="list-tags" rows="1" placeholder="タグ（空白区切り）" autocomplete="new-password" spellcheck="false" autocorrect="off" autocapitalize="off" data-lpignore="true" style="resize: none; overflow: hidden; white-space: nowrap;"></textarea>
+  <button class="panel-btn inverted" id="btn-copy-list" onclick="copyListItems()">クリップボードにコピー</button>
+ <div class="desk-ctrls">
+    <button onclick="saveListAndClose()" style="background:var(--color-A); color:var(--color-B);">決定(保存)</button>
+  </div>
+</div>
+
+<div id="panel-reader" class="panel" style="z-index: 300;">
+  <button class="close-btn" onclick="document.getElementById('panel-reader').classList.remove('active')">×</button>
+  <h2 id="reader-title">鑑賞モード</h2>
+  <div id="reader-content" style="font-size: 1.2rem; line-height: 2.0; white-space: pre-wrap; padding-bottom: 50px;"></div>
+</div>
+
+<div id="panel-auth" style="display:none; position:fixed; top:0; left:0; width:100%; height:100dvh; background:var(--color-B); z-index:10000; justify-content:center; align-items:center; flex-direction:column; padding:20px; box-sizing:border-box;">
+  <h2 style="color:var(--color-A); margin-bottom:20px;">合言葉をどうぞ</h2>
+  <input type="text" id="auth-input" style="padding:15px; font-size:1.5rem; width:100%; max-width:300px; border:1px solid var(--color-A); border-radius:var(--border-radius); margin-bottom:20px; text-align:center;">
+  <button onclick="checkPassphrase()" style="padding:15px 40px; font-size:1.2rem; background:var(--color-A); color:var(--color-B); border:none; border-radius:var(--border-radius); cursor:pointer;">開門</button>
+</div>
+
+<div id="panel-first-boot" style="display:none; position:fixed; top:0; left:0; width:100%; height:100dvh; background:var(--color-B); z-index:10001; justify-content:center; align-items:center; flex-direction:column; padding:20px; box-sizing:border-box;">
+  <h2 style="color:var(--color-A); margin-bottom:20px; text-align:center;">初期セットアップ</h2>
+  <p style="color:var(--color-A); margin-bottom:20px; text-align:center; line-height:1.6;">アプリをロックする（扉）機能を使用しますか？<br><span style="font-size:0.9rem;">※後から設定画面で変更可能です</span></p>
+
+  <div id="first-boot-choices" style="display:flex; gap:10px; width:100%; max-width:300px;">
+    <button onclick="skipFirstBoot()" style="padding:15px; flex:1; font-size:1.1rem; background:var(--color-B); color:var(--color-A); border:2px solid var(--color-A); border-radius:var(--border-radius); cursor:pointer; font-weight:bold;">使わない</button>
+    <button onclick="showFirstBootInput()" style="padding:15px; flex:1; font-size:1.1rem; background:var(--color-A); color:var(--color-B); border:none; border-radius:var(--border-radius); cursor:pointer; font-weight:bold;">使う</button>
+  </div>
+
+  <div id="first-boot-input-area" style="display:none; width:100%; max-width:300px; flex-direction:column; gap:10px;">
+    <input type="text" id="first-boot-pass-input" placeholder="合言葉を入力" style="padding:15px; font-size:1.2rem; border:1px solid var(--color-A); border-radius:var(--border-radius); text-align:center;">
+    <button onclick="saveFirstBootPass()" style="padding:15px; font-size:1.2rem; background:var(--color-A); color:var(--color-B); border:none; border-radius:var(--border-radius); cursor:pointer; font-weight:bold;">決定して進む</button>
+  </div>
+</div>
+
+<script>
+/**
+ * ==========================================
+ * さいきよ コアシステム (2026.08.29 改修版)
+ * 状態(State)とロジック(Logic)、描画(View)を完全分離
+ * ==========================================
+ */
+const SaikiyoApp = (() => {
+
+  // --- 1. 状態管理 (State) ---
+  const state = {
+    space: 'tanka',
+    data: [],
+    selectedIds: new Set(),
+    mode: 'normal',
+    listId: null,
+    config: { view: 'wrap', filter: 'work', font: 'sans-serif', radius: 'square' },
+    appTitle: 'さいきよ',
+    search: { mode: 'idle', suikoVisibleIds: new Set(), timeout: null },
+    ui: { lastTapTime: 0, tapTimeout: null, doubleTapThreshold: 300 },
+    drag: {
+      item: null, placeholder: null, isDragging: false,
+      offsetY: 0, startX: 0, startY: 0, origLeft: 0, timer: null,
+      lastX: 0, lastY: 0, lastMoveTime: 0, autoScrollSpeed: 0, autoScrollRAF: null
+    }
+  };
+
+  const CONSTANTS = {
+    STORAGE_KEY_TANKA: 'saikiyo_data',
+    STORAGE_KEY_MEMO: 'saikiyo_data_memo'
+  };
+
+  // --- 2. ユーティリティ (Utils) ---
+  const Utils = {
+    escapeHTML: str => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+    formatTime: ms => {
+      const d = new Date(ms), p = n => n.toString().padStart(2, '0');
+      const days = ['日', '月', '火', '水', '木', '金', '土'];
+      return `${d.getFullYear()}.${p(d.getMonth()+1)}.${p(d.getDate())}(${days[d.getDay()]}) ${p(d.getHours())}:${p(d.getMinutes())}`;
+    },
+    physicalCopy: text => {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); alert('コピーしました'); } catch(e) { alert('コピー失敗'); }
+      document.body.removeChild(ta);
+    },
+    getTimestampString: () => {
+      const d = new Date(), p = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+    }
+  };
+
+  // --- 3. ストレージ管理 (Storage) ---
+  const Storage = {
+    getKey: () => state.space === 'tanka' ? CONSTANTS.STORAGE_KEY_TANKA : CONSTANTS.STORAGE_KEY_MEMO,
+    loadData: () => { state.data = JSON.parse(localStorage.getItem(Storage.getKey())) || []; },
+    saveData: () => { localStorage.setItem(Storage.getKey(), JSON.stringify(state.data)); },
+    saveConfig: () => { localStorage.setItem('saikiyo_config', JSON.stringify(state.config)); },
+    saveSpace: () => { localStorage.setItem('saikiyo_space', state.space); }
+  };
+
+  // --- 4. ビュー描画・UI制御 (View) ---
+  const View = {
+    getDom: (id) => document.getElementById(id),
+    
+    applyThemeAndTitle: () => {
+      View.getDom('header-title').innerText = state.appTitle;
+      document.title = state.appTitle;
+    },
+    
+    applyColors: (mainA, subC, bgB) => {
+      const root = document.documentElement;
+      root.style.setProperty('--color-A', mainA);
+      root.style.setProperty('--color-C', subC);
+      root.style.setProperty('--color-B', bgB);
+      localStorage.setItem('saikiyo_color_A', mainA);
+      localStorage.setItem('saikiyo_color_C', subC);
+      localStorage.setItem('saikiyo_color_B', bgB);
+
+      if (View.getDom('hole-manual-main')) View.getDom('hole-manual-main').value = mainA.substring(0, 7);
+      if (View.getDom('hole-manual-sub')) View.getDom('hole-manual-sub').value = subC.substring(0, 7);
+      if (View.getDom('hole-manual-bg')) View.getDom('hole-manual-bg').value = bgB.substring(0, 7);
+      View.updateCustomScrollbar();
+    },
+
+    applyConfig: () => {
+      document.documentElement.removeAttribute('data-theme');
+      const savedA = localStorage.getItem('saikiyo_color_A');
+      const savedC = localStorage.getItem('saikiyo_color_C');
+      const savedB = localStorage.getItem('saikiyo_color_B');
+
+      if (savedA && savedC && savedB) View.applyColors(savedA, savedC, savedB);
+      else View.applyColors('#111111', '#E0E0E0', '#FFFFFF');
+
+      document.documentElement.style.setProperty('--font-family', state.config.font);
+      document.documentElement.setAttribute('data-radius', state.config.radius);
+      
+      const tl = View.getDom('timeline-container');
+      tl.className = state.config.view === 'wrap' ? 'view-mode-wrap' : 'view-mode-nowrap';
+      View.renderTimeline();
+    },
+
+    updateButtonsState: () => {
+      const tl = View.getDom('timeline-container');
+      const hasSelection = state.selectedIds.size > 0;
+      const isGlobalSelectMode = tl.classList.contains('select-mode');
+      const btnSend = View.getDom('btn-send'), btnAmu = View.getDom('btn-amu');
+      const btnTweet = View.getDom('btn-tweet'), btnSearch = View.getDom('btn-search');
+      const btnKansei = View.getDom('btn-kansei');
+
+      if (isGlobalSelectMode || hasSelection) {
+        btnSend.innerText = '編集'; btnSend.classList.toggle('active-btn', hasSelection); btnSend.disabled = !hasSelection;
+        btnAmu.innerText = '全取消'; btnAmu.classList.add('active-btn'); btnAmu.disabled = false;
+        btnTweet.disabled = !hasSelection; btnTweet.classList.toggle('active-btn', hasSelection);
+        btnSearch.disabled = true;
+        btnKansei.innerText = '全選択'; btnKansei.disabled = false; btnKansei.classList.add('active-btn'); btnKansei.dataset.action = 'selectAll';
+      } else {
+        btnSend.innerText = '送る'; btnSend.classList.remove('active-btn'); btnSend.disabled = false;
+        btnAmu.innerText = '編む'; btnAmu.classList.remove('active-btn'); btnAmu.disabled = false;
+        btnTweet.disabled = false; btnTweet.classList.remove('active-btn');
+        btnSearch.disabled = false;
+        btnKansei.innerText = '管制'; btnKansei.disabled = false; btnKansei.classList.remove('active-btn'); btnKansei.dataset.action = 'kansei';
+      }
+    },
+
+    renderTimeline: (forceBottom = false) => {
+      const tl = View.getDom('timeline-container');
+      const isAtBottom = (tl.scrollHeight - tl.scrollTop) <= (tl.clientHeight + 20);
+      const prevScroll = tl.scrollTop;
+      tl.innerHTML = '';
+
+      let filtered = state.data.filter(d => {
+        if (state.config.filter === 'work' && d.status !== '作品') return false;
+        if (state.config.filter === 'archive' && d.status !== 'アーカイブ') return false;
+        if (state.config.filter === 'unpublished' && d.publish_status !== '未発表') return false;
+        if (state.config.filter === 'list' && d.type !== 'list') return false;
+        if (state.config.filter === 'notag' && (d.tags && d.tags.length > 0)) return false;
+        return true;
+      });
+
+      const fragment = document.createDocumentFragment();
+      const spacer = document.createElement('div');
+      spacer.style.flex = '1';
+      fragment.appendChild(spacer);
+
+      filtered.sort((a,b) => a.id - b.id).forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item'; div.dataset.id = item.id;
+        if (item.status === 'アーカイブ') div.classList.add('is-archive');
+        if (state.selectedIds.has(item.id)) div.classList.add('selected', 'selecting');
+
+        let html = `<span class="selection-marker"></span>`;
+        let text = item.type === 'list' ? `【リスト】${item.content} (${(item.items||[]).length}件)` : item.content;
+        html += `<div class="item-content">${Utils.escapeHTML(text)}</div>`;
+
+        const dateStr = Utils.formatTime(item.id);
+        const tagsStr = item.tags ? item.tags.map(t=>`#${t}`).join(' ') : '';
+        const listNames = state.data.filter(d => d.type === 'list' && d.items && d.items.includes(item.id)).map(d => d.content).join(', ');
+
+        html += `<div class="meta-data">${dateStr}<br>${item.status}<br>${item.publish_status}<br>${tagsStr}<br>${item.memo ? `メモ: ${item.memo}<br>` : ''}${listNames ? `収録リスト：${listNames}<br>` : ''}`;
+        if (item.type === 'list') {
+          html += `<br><button onclick="event.stopPropagation(); window.openListEditor(${item.id})" style="margin-top:8px; padding:6px 12px; background:var(--color-A); color:var(--color-B); border:none; cursor:pointer; font-weight:bold; font-size:0.9rem; border-radius:var(--border-radius);">リストを再編集する</button>`;
+        }
+        html += `</div>`;
+        div.innerHTML = html;
+        fragment.appendChild(div);
+      });
+
+      tl.appendChild(fragment);
+      Logic.executeUnifiedSearch();
+
+      if (forceBottom || isAtBottom) tl.scrollTop = tl.scrollHeight;
+      else tl.scrollTop = prevScroll;
+
+      View.updateButtonsState();
+    },
+
+    updateCustomScrollbar: () => {
+      const panel = View.getDom('panel-list-editor'), track = View.getDom('list-editor-custom-scroll'), thumb = View.getDom('list-editor-custom-thumb');
+      if (!panel || !track || !thumb) return;
+      if (!panel.classList.contains('active')) { track.style.display = 'none'; return; }
+      const scrollH = panel.scrollHeight, clientH = panel.clientHeight;
+      if (scrollH <= clientH) { track.style.display = 'none'; return; }
+      track.style.display = 'block';
+      const thumbH = Math.max(20, (clientH / scrollH) * clientH);
+      const scrollRatio = panel.scrollTop / (scrollH - clientH);
+      thumb.style.height = `${thumbH}px`;
+      thumb.style.top = `${scrollRatio * (clientH - thumbH)}px`;
+    },
+
+    renderListItems: (itemIds) => {
+      const container = View.getDom('list-items');
+      container.innerHTML = '';
+      itemIds.forEach((id, index) => {
+        const tanka = state.data.find(d => d.id === id);
+        if(!tanka) return;
+        const div = document.createElement('div');
+        div.className = 'list-item-edit'; div.dataset.id = id;
+        div.innerHTML = `<div class="item-num">${index+1}</div><span>${Utils.escapeHTML(tanka.content)}</span><div class="item-drag-handle">≡</div>`;
+        div.addEventListener('pointerdown', DragDrop.handlePointerDown);
+        container.appendChild(div);
+      });
+    },
+
+    updateListNumbers: () => {
+      const items = View.getDom('list-items').querySelectorAll('.list-item-edit:not(.dragging)');
+      items.forEach((item, index) => { const num = item.querySelector('.item-num'); if(num) num.innerText = index + 1; });
+    },
+
+    closeAllPanels: () => {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    },
+
+    cleanupAmuInline: () => {
+      document.querySelectorAll('.amu-inline-ctrl').forEach(el => el.remove());
+      document.querySelectorAll('.amu-action-btn.selected').forEach(b => b.classList.remove('selected'));
+    }
+  };
+
+  // --- 5. ロジック管理 (Logic) ---
+  const Logic = {
+    executeUnifiedSearch: () => {
+      const items = document.querySelectorAll('#timeline-container .item');
+      if (state.search.mode === 'idle') { items.forEach(i => i.style.display = ''); return; }
+      
+      const btnSearch = View.getDom('btn-search');
+      btnSearch.style.pointerEvents = 'none';
+
+      requestAnimationFrame(() => {
+        if (state.search.mode === 'suiko') {
+          items.forEach(item => { item.style.display = state.search.suikoVisibleIds.has(Number(item.dataset.id)) ? '' : 'none'; });
+        } else if (state.search.mode === 'searching') {
+          const contentKey = View.getDom('input-content').value.replace(/[｜│]/g, '|').replace(/ /g, ' ').toLowerCase();
+          const tagKey = View.getDom('input-tags').value.replace(/[｜│]/g, '|').replace(/ /g, ' ').toLowerCase();
+          const cGroups = contentKey.split('|').map(k=>k.trim()).filter(Boolean);
+          const tGroups = tagKey.split('|').map(k=>k.trim()).filter(Boolean);
+
+          items.forEach(item => {
+            const id = Number(item.dataset.id);
+            const d = state.data.find(x => x.id === id);
+            if (!d) return;
+            const content = (d.content || '').toLowerCase(), tags = (d.tags ? d.tags.join(' ') : '').toLowerCase(), memo = (d.memo || '').toLowerCase(), dateStr = Utils.formatTime(id).toLowerCase();
+
+            const cMatch = cGroups.length===0 || cGroups.some(g => g.split(/\s+/).filter(Boolean).every(k => content.includes(k) || memo.includes(k) || dateStr.includes(k)));
+            const tMatch = tGroups.length===0 || tGroups.some(g => g.split(/\s+/).filter(Boolean).every(k => tags.includes(k)));
+            item.style.display = (cMatch && tMatch) ? '' : 'none';
+          });
+        }
+        btnSearch.style.pointerEvents = 'auto';
+      });
+    },
+
+    exitSelectionMode: () => {
+      state.mode = 'normal';
+      state.selectedIds.clear();
+      state.listId = null;
+      View.getDom('timeline-container').classList.remove('select-mode');
+      View.closeAllPanels();
+      View.renderTimeline();
+    },
+
+    togglePoemSelection: (element, id) => {
+      element.classList.toggle('selected');
+      element.classList.add('selecting');
+      if (element.classList.contains('selected')) state.selectedIds.add(id);
+      else { state.selectedIds.delete(id); if(state.selectedIds.size === 0) element.classList.remove('selecting'); }
+      View.updateButtonsState();
+    }
+  };
+
+  // --- 6. ドラッグ＆ドロップ制御 (DragDrop) ---
+  const DragDrop = {
+    handlePointerDown: function(e) {
+      if (e.button !== 0 && e.type !== 'touchstart') return;
+      if (!e.target.classList.contains('item-drag-handle')) return;
+      
+      const d = state.drag;
+      d.item = this; d.startX = e.clientX; d.startY = e.clientY; d.isDragging = false;
+      d.timer = setTimeout(() => DragDrop.startDrag(e), 250);
+
+      document.addEventListener('pointermove', DragDrop.checkThreshold, { passive: true });
+      document.addEventListener('pointerup', DragDrop.handleEndPre);
+      document.addEventListener('pointercancel', DragDrop.handleEndPre);
+    },
+    checkThreshold: (e) => {
+      const d = state.drag;
+      if (!d.item || d.isDragging) return;
+      if (Math.abs(e.clientX - d.startX) > 10 || Math.abs(e.clientY - d.startY) > 10) {
+        clearTimeout(d.timer); d.timer = null; d.item = null; DragDrop.removePreListeners();
+      }
+    },
+    handleEndPre: () => {
+      const d = state.drag;
+      clearTimeout(d.timer); d.timer = null; d.item = null; DragDrop.removePreListeners();
+    },
+    removePreListeners: () => {
+      document.removeEventListener('pointermove', DragDrop.checkThreshold);
+      document.removeEventListener('pointerup', DragDrop.handleEndPre);
+      document.removeEventListener('pointercancel', DragDrop.handleEndPre);
+    },
+    startDrag: (e) => {
+      const d = state.drag;
+      d.isDragging = true; DragDrop.removePreListeners();
+      const listContainer = View.getDom('list-items');
+      const rect = d.item.getBoundingClientRect();
+      d.origLeft = rect.left;
+
+      d.placeholder = document.createElement('div');
+      d.placeholder.className = 'list-item-placeholder';
+      d.placeholder.style.height = `${rect.height}px`;
+      listContainer.insertBefore(d.placeholder, d.item);
+      
+      d.offsetY = e.clientY - rect.top;
+      d.item.classList.add('dragging');
+      d.item.style.width = `${rect.width}px`; d.item.style.height = `${rect.height}px`;
+      d.item.style.left = `${rect.left}px`; d.item.style.top = `${rect.top}px`;
+      document.body.appendChild(d.item);
+      
+      if (navigator.vibrate) navigator.vibrate(40);
+      d.lastX = e.clientX; d.lastY = e.clientY;
+      
+      document.addEventListener('pointermove', DragDrop.handleMove, { passive: false });
+      document.addEventListener('pointerup', DragDrop.handleUp);
+      document.addEventListener('pointercancel', DragDrop.handleUp);
+    },
+    handleMove: (e) => {
+      const d = state.drag;
+      if (!d.isDragging || !d.item) return;
+      e.preventDefault();
+      const now = Date.now();
+      if (now - d.lastMoveTime < 16) return;
+      d.lastMoveTime = now;
+      d.lastX = e.clientX; d.lastY = e.clientY;
+
+      d.item.style.left = `${d.origLeft}px`;
+      d.item.style.top = `${e.clientY - d.offsetY}px`;
+
+      const panelRect = View.getDom('panel-list-editor').getBoundingClientRect();
+      const dragRect = d.item.getBoundingClientRect();
+      const threshold = 60;
+      
+      if (dragRect.top < panelRect.top + threshold) {
+        d.autoScrollSpeed = -(3 + Math.min(1, Math.max(0, panelRect.top + threshold - dragRect.top) / threshold) * 8);
+      } else if (dragRect.bottom > panelRect.bottom - threshold) {
+        d.autoScrollSpeed = (3 + Math.min(1, Math.max(0, dragRect.bottom - (panelRect.bottom - threshold)) / threshold) * 8);
+      } else { d.autoScrollSpeed = 0; }
+
+      if (d.autoScrollSpeed !== 0 && !d.autoScrollRAF) DragDrop.startAutoScroll();
+      DragDrop.checkIntersection();
+    },
+    handleUp: () => {
+      const d = state.drag;
+      if (!d.isDragging || !d.item) return;
+      d.autoScrollSpeed = 0;
+      if (d.autoScrollRAF) { cancelAnimationFrame(d.autoScrollRAF); d.autoScrollRAF = null; }
+      
+      const listContainer = View.getDom('list-items');
+      listContainer.insertBefore(d.item, d.placeholder);
+      d.placeholder.remove(); d.placeholder = null;
+      
+      d.item.classList.remove('dragging'); d.item.style = '';
+      document.removeEventListener('pointermove', DragDrop.handleMove);
+      document.removeEventListener('pointerup', DragDrop.handleUp);
+      document.removeEventListener('pointercancel', DragDrop.handleUp);
+      
+      d.item = null; d.isDragging = false;
+      View.updateListNumbers();
+    },
+    checkIntersection: () => {
+      const d = state.drag;
+      if (!d.item || !d.placeholder) return;
+      const listContainer = View.getDom('list-items');
+      const elements = document.elementsFromPoint(d.startX, d.lastY);
+      const target = elements.find(el => el.classList && el.classList.contains('list-item-edit') && el.parentNode === listContainer);
+
+      if (target && target !== d.placeholder && target !== d.item) {
+        const targetRect = target.getBoundingClientRect();
+        listContainer.insertBefore(d.placeholder, (d.lastY < targetRect.top + (targetRect.height / 2)) ? target : target.nextSibling);
+      } else if (!target) {
+        const containerRect = listContainer.getBoundingClientRect();
+        if (d.lastY > containerRect.bottom) listContainer.appendChild(d.placeholder);
+        else if (d.lastY < containerRect.top && listContainer.firstChild) listContainer.insertBefore(d.placeholder, listContainer.firstChild);
+      }
+    },
+    startAutoScroll: () => {
+      const d = state.drag;
+      if (d.autoScrollSpeed === 0 || !d.isDragging) { d.autoScrollRAF = null; return; }
+      View.getDom('panel-list-editor').scrollTop += d.autoScrollSpeed;
+      DragDrop.checkIntersection();
+      d.autoScrollRAF = requestAnimationFrame(DragDrop.startAutoScroll);
+    }
+  };
+
+  // --- 7. グローバルAPI (HTMLインラインonclick対応用) ---
+  const API = {
+    closePanels: View.closeAllPanels,
+    cleanupAmuInline: View.cleanupAmuInline,
+    
+    toggleAmuAction: (btn) => {
+      if (btn.classList.contains('selected')) return;
+      View.cleanupAmuInline(); btn.classList.add('selected');
+      const ctrl = document.createElement('div');
+      ctrl.className = 'amu-inline-ctrl'; ctrl.style.cssText = 'display:flex; gap:10px; margin-bottom:12px;';
+      ctrl.innerHTML = `<button style="flex:1; padding:15px; background:var(--color-B); color:var(--color-A); border:1px solid var(--color-A); font-weight:bold; font-size:1.1rem; border-radius:var(--border-radius); cursor:pointer;" onclick="cleanupAmuInline()">取消</button>
+                        <button style="flex:1; padding:15px; background:var(--color-A); color:var(--color-B); border:1px solid var(--color-A); font-weight:bold; font-size:1.1rem; border-radius:var(--border-radius); cursor:pointer;" onclick="executeSingleAmuAction('${btn.dataset.type}', '${btn.dataset.val}', this)">決定</button>`;
+      btn.parentNode.insertBefore(ctrl, btn.nextSibling);
+    },
+
+    executeSingleAmuAction: (type, val, submitBtn) => {
+      submitBtn.innerText = 'できたよ！'; submitBtn.style.pointerEvents = 'none';
+      if (submitBtn.previousElementSibling) submitBtn.previousElementSibling.style.pointerEvents = 'none';
+      document.querySelectorAll('.amu-action-btn').forEach(b => b.style.pointerEvents = 'none');
+
+      let needCopy = false, needCreateList = false, needImage = false;
+      if (type === 'status') state.data.forEach(d => { if(state.selectedIds.has(d.id)) d.status = val === 'archive' ? 'アーカイブ' : '作品'; });
+      else if (type === 'publish') state.data.forEach(d => { if(state.selectedIds.has(d.id)) d.publish_status = val === 'published' ? '既発表' : '未発表'; });
+      else if (type === 'memo' && state.selectedIds.size === 1) { const t = state.data.find(d => d.id === Array.from(state.selectedIds)[0]); if(t) t.memo = View.getDom('amu-memo-input').value.trim(); }
+      else if (type === 'tag') {
+        const newSet = new Set(View.getDom('amu-tag-input').value.trim().split(/\s+/).filter(Boolean));
+        const origSet = new Set((View.getDom('amu-tag-input').dataset.original || '').split(/\s+/).filter(Boolean));
+        const tagsToRemove = new Set([...origSet].filter(x => !newSet.has(x))), tagsToAdd = new Set([...newSet].filter(x => !origSet.has(x)));
+        state.data.forEach(d => {
+          if(state.selectedIds.has(d.id)) {
+            d.tags = (d.tags||[]).filter(t => !tagsToRemove.has(t));
+            tagsToAdd.forEach(t => { if(!d.tags.includes(t)) d.tags.push(t); });
+          }
+        });
+      }
+      else if (type === 'copy') needCopy = true;
+      else if (type === 'create_list') needCreateList = true;
+      else if (type === 'image') needImage = true;
+
+      if (needCopy) Utils.physicalCopy(state.data.filter(d => state.selectedIds.has(d.id)).map(d => d.content).join('\n\n'));
+      Storage.saveData();
+
+      setTimeout(() => {
+        submitBtn.innerText = '決定'; submitBtn.style.pointerEvents = 'auto';
+        if (submitBtn.previousElementSibling) submitBtn.previousElementSibling.style.pointerEvents = 'auto';
+        document.querySelectorAll('.amu-action-btn').forEach(b => b.style.pointerEvents = 'auto');
+
+        if (needCreateList) {
+          let eIds = []; state.selectedIds.forEach(id => { const t = state.data.find(d=>d.id===id); if(t) { if(t.type==='list' && t.items) eIds.push(...t.items); else eIds.push(id); }});
+          API.openListEditor(null, [...new Set(eIds)]); View.cleanupAmuInline();
+        } else if (needImage) { API.openImageGeneratorFromAmu(); View.cleanupAmuInline(); }
+        else { View.closeAllPanels(); Logic.exitSelectionMode(); View.cleanupAmuInline(); }
+      }, 1000);
+    },
+
+    openListEditor: (listId, initialItemIds = []) => {
+      View.closeAllPanels(); state.mode = 'list_edit';
+      View.getDom('panel-list-editor').classList.add('active');
+      if (listId) {
+        state.listId = listId; const l = state.data.find(d => d.id === listId);
+        View.getDom('list-name').value = l.content === '無題のリスト' ? '' : l.content;
+        View.getDom('list-memo').value = l.memo || ''; View.getDom('list-tags').value = l.tags ? l.tags.join(' ') : '';
+        View.renderListItems(l.items || []);
+      } else {
+        state.listId = Date.now();
+        View.getDom('list-name').value = ''; View.getDom('list-memo').value = ''; View.getDom('list-tags').value = '';
+        View.renderListItems(initialItemIds);
+      }
+      setTimeout(View.updateCustomScrollbar, 50);
+    },
+
+    saveListAndClose: () => {
+      const name = View.getDom('list-name').value.trim() || '無題のリスト', memo = View.getDom('list-memo').value.trim();
+      const tags = View.getDom('list-tags').value.trim().split(/\s+/).filter(Boolean);
+      const items = Array.from(View.getDom('list-items').querySelectorAll('.list-item-edit:not(.dragging)')).map(el => Number(el.dataset.id)).filter(Boolean);
+      
+      if (items.length > 0) {
+        let l = state.data.find(d => d.id === state.listId);
+        if (l) { l.content = name; l.memo = memo; l.tags = tags; l.items = items; }
+        else state.data.push({ id: state.listId, type: 'list', content: name, status: '作品', publish_status: '未発表', memo: memo, tags: tags, items: items });
+        Storage.saveData();
+      }
+      API.closeListEditor();
+    },
+
+    closeListEditor: () => { View.getDom('panel-list-editor').classList.remove('active'); Logic.exitSelectionMode(); },
+    
+    openExpandedReader: (title, text) => { View.getDom('reader-title').innerText = title || '無題'; View.getDom('reader-content').innerText = text; View.getDom('panel-reader').classList.add('active'); },
+    openExpandedReaderFromList: () => {
+      const items = Array.from(View.getDom('list-items').querySelectorAll('.list-item-edit:not(.dragging)')).map(el => Number(el.dataset.id)).filter(Boolean);
+      if(items.length===0) return alert('リストが空です');
+      API.openExpandedReader(View.getDom('list-name').value.trim() || '無題', items.map(id => { let t = state.data.find(d => d.id === id); return t ? t.content : ''; }).filter(Boolean).join('\n\n'));
+    },
+    openExpandedReaderFromAmu: () => { const t = View.getDom('amu-preview').innerText; if(!t) return alert('展開するデータがありません'); API.openExpandedReader('編集室プレビュー', t); },
+    openImageGeneratorFromAmu: () => { const t = View.getDom('amu-preview').innerText; if(t) window.open(`tanzaku.html?text=${encodeURIComponent(t)}`, '_blank'); else alert('対象データがありません'); },
+    
+    copyListItems: () => {
+      const btn = View.getDom('btn-copy-list'); if (btn.innerText === 'コピー完了') return;
+      const title = View.getDom('list-name').value.trim(), memo = View.getDom('list-memo').value.trim(), tagStr = View.getDom('list-tags').value.trim();
+      const items = Array.from(View.getDom('list-items').querySelectorAll('.list-item-edit:not(.dragging)')).map(el => Number(el.dataset.id)).filter(Boolean);
+      const txt = items.map(id => { let t = state.data.find(d => d.id === id); return t ? t.content : ''; }).filter(Boolean).join('\n\n');
+      Utils.physicalCopy(`${title ? '【'+title+'】\n' : ''}[${Utils.formatTime(Date.now())}]\n\n${txt}\n\n${memo ? '【メモ】'+memo+'\n' : ''}${tagStr ? '【タグ】'+tagStr : ''}`.trim());
+      const o = btn.innerText; btn.innerText = 'コピー完了'; setTimeout(() => btn.innerText = o, 2000);
+    },
+
+    toggleKanseiMenu: (id) => { document.querySelectorAll('.kansei-submenu').forEach(el => { if(el.id !== id) el.classList.remove('open'); }); View.getDom(id).classList.toggle('open'); },
+    
+    executeKansei: async (type) => {
+      if (type === 'dasshutsu') {
+        if(state.data.length === 0) return alert('射出するデータがありません');
+        const file = new File([new Blob([JSON.stringify(state.data, null, 2)], { type: 'text/plain' })], `saikiyo_${state.space}_backup_${Utils.getTimestampString()}.txt`, { type: 'text/plain' });
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: `さいきよバックアップ (${state.space})`, text: `全データ（${state.data.length}件）` });
+          else { const u = URL.createObjectURL(file); const a = document.createElement('a'); a.href = u; a.download = file.name; a.click(); URL.revokeObjectURL(u); }
+        } catch (e) { if(e.name !== 'AbortError') alert('射出エラー: ' + e.message); }
+        View.closeAllPanels();
+      } else if (type === 'bunshin' || type === 'haishutsu') {
+        const val = document.querySelector(`input[name="${type}-target"]:checked`).value;
+        const targetData = state.data.filter(d => (val==='work' && d.status!=='作品') ? false : (val==='archive' && d.status!=='アーカイブ') ? false : true);
+        if (targetData.length === 0) return alert('対象データがありません');
+        const u = URL.createObjectURL(new Blob([JSON.stringify(targetData, null, 2)], {type: 'application/json'}));
+        const a = document.createElement('a'); a.href = u; a.download = `saikiyo_${state.space}_${val}_${Utils.getTimestampString()}.json`; a.click(); URL.revokeObjectURL(u);
+        if (type === 'haishutsu') {
+          if(window.confirm(`退避しました。\n基地（${state.space}）から該当データを消去し、撤収しますか？`)){
+            const tIds = new Set(targetData.map(d => d.id)); state.data = state.data.filter(d => !tIds.has(d.id)); Storage.saveData(); View.renderTimeline();
+          }
+        }
+        View.closeAllPanels();
+      }
+    },
+    kanseiAction: (type, e) => {
+      if (type === 'import') {
+        const f = e.target.files[0]; if(!f) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const imp = JSON.parse(ev.target.result);
+            if(Array.isArray(imp)){ const eIds = new Set(state.data.map(d=>d.id)); imp.forEach(d=>{if(!eIds.has(d.id)) state.data.push(d);}); Storage.saveData(); View.renderTimeline(true); alert('搬入完了'); }
+          } catch(err) { alert('不正なファイルです'); }
+        }; reader.readAsText(f);
+      }
+      View.closeAllPanels();
+    },
+    
+    resetSettings: () => {
+      if(!window.confirm('設定をすべて初期値に戻しますか？')) return;
+      state.config = { view: 'wrap', filter: 'work', font: 'sans-serif', radius: 'square' };
+      document.querySelector('input[name="view-mode"][value="wrap"]').checked = true;
+      document.querySelector('input[name="filter-mode"][value="work"]').checked = true;
+      document.querySelector('input[name="font-mode"][value="sans-serif"]').checked = true;
+      document.querySelector('input[name="radius-mode"][value="square"]').checked = true;
+      ['saikiyo_theme_color','saikiyo_color_A','saikiyo_color_B','saikiyo_color_C','saikiyo_config'].forEach(k=>localStorage.removeItem(k));
+      View.applyConfig();
+    },
+    
+    jumpToDate: () => {
+      const input = View.getDom('date-jump-input').value; if(!input) return alert('日付を指定してください。');
+      const targetTime = new Date(input).getTime(), targetEl = Array.from(View.getDom('timeline-container').querySelectorAll('.item')).find(i => Number(i.dataset.id) >= targetTime);
+      if(targetEl) targetEl.scrollIntoView({ behavior: 'smooth' }); else alert('指定日付以降のデータはありません。');
+      View.closeAllPanels();
+    },
+    returnToLatest: () => { View.getDom('timeline-container').scrollTop = View.getDom('timeline-container').scrollHeight; View.closeAllPanels(); },
+    
+    renameApp: () => {
+      const input = View.getDom('rename-input').value.trim(); if(!input) return alert('変更する名前を入力してください。');
+      state.appTitle = input; View.applyThemeAndTitle(); localStorage.setItem('saikiyo_title', input); View.getDom('rename-input').value = ''; alert(`基地名を「${input}」に変更しました。`);
+    },
+    
+    setPassphrase: () => {
+      const pass = View.getDom('setup-passphrase-input').value.trim();
+      if(pass) { localStorage.setItem('saikiyo_passphrase', pass); alert('合言葉を設定しました。'); }
+      else { localStorage.removeItem('saikiyo_passphrase'); alert('合言葉を解除しました。'); }
+    },
+    checkPassphrase: () => {
+      const input = View.getDom('auth-input').value.trim();
+      if(input === localStorage.getItem('saikiyo_passphrase') || input === 'よきいさ') { View.getDom('panel-auth').style.display = 'none'; View.getDom('auth-input').value = ''; }
+      else { alert('ちがうよ！'); View.getDom('auth-input').value = ''; }
+    },
+    skipFirstBoot: () => { localStorage.setItem('saikiyo_setup_done', 'true'); View.getDom('panel-first-boot').style.display = 'none'; },
+    showFirstBootInput: () => { View.getDom('first-boot-choices').style.display = 'none'; View.getDom('first-boot-input-area').style.display = 'flex'; },
+    saveFirstBootPass: () => {
+      const pass = View.getDom('first-boot-pass-input').value.trim(); if(!pass) return alert('合言葉を入力');
+      localStorage.setItem('saikiyo_passphrase', pass); localStorage.setItem('saikiyo_setup_done', 'true');
+      if(View.getDom('setup-passphrase-input')) View.getDom('setup-passphrase-input').value = pass;
+      View.getDom('panel-first-boot').style.display = 'none'; alert('合言葉を設定しました。');
+    },
+
+    executeChushutsuAction: (type) => {
+      const st = View.getDom('chushutsu-start').value, ed = View.getDom('chushutsu-end').value;
+      if(!st || !ed) return alert('両方指定してください。');
+      const sMs = new Date(st).getTime(), eMs = new Date(ed).getTime();
+      if(sMs > eMs) return alert('開始は終了より前に設定してください。');
+      const target = state.data.filter(d => d.id >= sMs && d.id <= eMs);
+      if(target.length === 0) return alert('期間内にデータなし。');
+      if(!window.confirm(`指定期間（${target.length}件）を${type==='haishutsu'?'撤収':'退避'}しますか？`)) return;
+      const u = URL.createObjectURL(new Blob([JSON.stringify(target, null, 2)], {type: 'application/json'}));
+      const a = document.createElement('a'); a.href = u; a.download = `saikiyo_${state.space}_${Utils.getTimestampString()}.json`; a.click(); URL.revokeObjectURL(u);
+      if(type === 'haishutsu') { state.data = state.data.filter(d => d.id < sMs || d.id > eMs); Storage.saveData(); View.renderTimeline(); }
+      View.closeAllPanels(); alert(type==='haishutsu'?'撤収完了':'退避完了');
+    },
+
+    openMitsuyuPanel: () => { View.closeAllPanels(); View.getDom('input-mitsuyu').value = ''; View.getDom('panel-mitsuyu').classList.add('active'); },
+    executeMitsuyu: () => {
+      const text = View.getDom('input-mitsuyu').value; if(!text.trim()) return;
+      const blocks = text.split(/\n\s*\n/); let count = 0;
+      blocks.forEach(b => { const c = b.trim(); if(c) { state.data.push({ id: Date.now()+count, type: 'tanka', content: c, status: '作品', publish_status: '未発表', tags: [] }); count++; } });
+      if (count > 0) { Storage.saveData(); View.renderTimeline(true); alert(`${count}件取り込みました。`); }
+      View.closeAllPanels();
+    },
+
+    removeDuplicates: () => {
+      if(state.space === 'memo') return;
+      const seen = new Map(), newData = [], idMap = {}; let rm = 0;
+      state.data.sort((a,b)=>a.id-b.id).forEach(i => {
+        if(i.type === 'tanka') {
+          const key = `${i.content}::${i.tags?[...i.tags].sort().join(','):''}::${i.memo||''}`;
+          if(seen.has(key)) { rm++; idMap[i.id] = seen.get(key); } else { seen.set(key, i.id); newData.push(i); }
+        } else newData.push(i);
+      });
+      if(rm === 0) return alert('重複なし！');
+      newData.forEach(i => { if(i.type==='list' && i.items) i.items = i.items.map(id => idMap[id]||id); });
+      state.data = newData; Storage.saveData(); View.renderTimeline();
+      alert(`${rm}件削除しリストも修正したよ！`); View.closeAllPanels();
+    },
+
+    updateCustomScrollbar: View.updateCustomScrollbar,
+    exitSelectionMode: Logic.exitSelectionMode
+  };
+
+  // --- 8. 初期化とイベント登録 (Init) ---
+  const init = () => {
+    // 起動チェック
+    if (!localStorage.getItem('saikiyo_setup_done')) View.getDom('panel-first-boot').style.display = 'flex';
+    else if (localStorage.getItem('saikiyo_passphrase')) {
+      View.getDom('panel-auth').style.display = 'flex';
+      if(View.getDom('setup-passphrase-input')) View.getDom('setup-passphrase-input').value = localStorage.getItem('saikiyo_passphrase');
+    }
+
+    state.space = localStorage.getItem('saikiyo_space') || 'tanka';
+    View.getDom('btn-space-toggle').innerText = state.space;
+    if(state.space === 'memo') { View.getDom('btn-jufuku').style.display = 'none'; View.getDom('menu-jufuku').style.display = 'none'; }
+    
+    Storage.loadData();
+    state.appTitle = localStorage.getItem('saikiyo_title') || 'さいきよ';
+    View.applyThemeAndTitle();
+
+    if (localStorage.getItem('saikiyo_config')) {
+      state.config = { ...state.config, ...JSON.parse(localStorage.getItem('saikiyo_config')) };
+      ['view-mode','filter-mode','font-mode','radius-mode'].forEach(k => {
+        const el = document.querySelector(`input[name="${k}"][value="${state.config[k.split('-')[0]]}"]`);
+        if(el) el.checked = true;
+      });
+    }
+    View.applyConfig();
+
+    const savedPos = localStorage.getItem('saikiyo_scroll_pos');
+    View.getDom('timeline-container').scrollTop = savedPos !== null ? parseInt(savedPos, 10) : View.getDom('timeline-container').scrollHeight;
+
+    // イベントバインディング
+    const tl = View.getDom('timeline-container');
+    tl.addEventListener('scroll', () => localStorage.setItem('saikiyo_scroll_pos', tl.scrollTop));
+    View.getDom('panel-list-editor').addEventListener('scroll', () => requestAnimationFrame(View.updateCustomScrollbar));
+    window.addEventListener('resize', () => requestAnimationFrame(View.updateCustomScrollbar));
+    View.getDom('header-title').addEventListener('click', () => tl.scrollTo({ top: tl.scrollHeight, behavior: 'smooth' }));
+
+    View.getDom('btn-space-toggle').addEventListener('click', () => {
+      Storage.saveData(); state.space = state.space === 'tanka' ? 'memo' : 'tanka'; Storage.saveSpace();
+      View.getDom('btn-space-toggle').innerText = state.space;
+      View.getDom('btn-jufuku').style.display = state.space === 'memo' ? 'none' : 'block';
+      Storage.loadData(); Logic.exitSelectionMode(); View.renderTimeline(true);
+    });
+
+    View.getDom('btn-kansei').addEventListener('click', () => {
+      if (View.getDom('btn-kansei').dataset.action === 'selectAll') {
+        tl.querySelectorAll('.item').forEach(item => {
+          if (item.style.display !== 'none') { state.selectedIds.add(Number(item.dataset.id)); item.classList.add('selected', 'selecting'); }
+        }); View.updateButtonsState();
+      } else View.getDom('panel-kansei').classList.add('active');
+    });
+
+    View.getDom('btn-settei').addEventListener('click', () => {
+      View.getDom('count-tanka').innerText = state.data.filter(d => d.type !== 'list').length;
+      View.getDom('count-list').innerText = state.data.filter(d => d.type === 'list').length;
+      View.getDom('panel-settei').classList.add('active');
+    });
+
+    View.getDom('btn-fullscreen').addEventListener('click', () => {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{}); else document.exitFullscreen();
+    });
+
+    const triggerSearch = () => { if (state.search.mode === 'searching') { clearTimeout(state.search.timeout); state.search.timeout = setTimeout(Logic.executeUnifiedSearch, 250); } };
+    View.getDom('input-content').addEventListener('input', triggerSearch);
+    View.getDom('input-tags').addEventListener('input', triggerSearch);
+
+    View.getDom('btn-search').addEventListener('click', () => {
+      const btn = View.getDom('btn-search');
+      if (state.search.mode === 'idle') { state.search.mode = 'searching'; btn.innerText = '推敲'; btn.style.cssText = 'background:var(--color-B); color:var(--color-A);'; Logic.executeUnifiedSearch(); }
+      else if (state.search.mode === 'searching') { state.search.mode = 'suiko'; btn.innerText = '解除'; state.search.suikoVisibleIds.clear(); tl.querySelectorAll('.item').forEach(i => { if(i.style.display!=='none') state.search.suikoVisibleIds.add(Number(i.dataset.id)); }); View.getDom('input-content').value = ''; View.getDom('input-tags').value = ''; }
+      else if (state.search.mode === 'suiko') { state.search.mode = 'idle'; btn.innerText = '検索'; btn.style.cssText = ''; state.search.suikoVisibleIds.clear(); View.getDom('input-content').value = ''; View.getDom('input-tags').value = ''; tl.querySelectorAll('.item').forEach(i=>i.style.display=''); }
+    });
+
+    View.getDom('btn-send').addEventListener('click', () => {
+      if (!tl.classList.contains('select-mode') && state.selectedIds.size === 0) {
+        const content = View.getDom('input-content').value.trim(); if (!content) return;
+        const tags = View.getDom('input-tags').value.trim().split(/\s+/).filter(Boolean);
+        const newItemId = Date.now();
+        state.data.push({ id: newItemId, type: 'tanka', content: content, status: '作品', publish_status: '未発表', tags: tags });
+        View.getDom('input-content').value = ''; View.getDom('input-tags').value = '';
+        if (state.search.mode === 'searching') { state.search.mode = 'idle'; View.getDom('btn-search').innerText = '検索'; View.getDom('btn-search').style.cssText = ''; tl.querySelectorAll('.item').forEach(i=>i.style.display=''); }
+        else if (state.search.mode === 'suiko') state.search.suikoVisibleIds.add(newItemId);
+        Storage.saveData(); View.renderTimeline(true);
+      } else {
+        let eIds = [], uTags = new Set(), sMemo = '';
+        state.selectedIds.forEach(id => { const t = state.data.find(d=>d.id===id); if(t) { if(t.type==='list' && t.items) eIds.push(...t.items); else eIds.push(id); if(t.tags) t.tags.forEach(tg=>uTags.add(tg)); } });
+        const mNode = View.getDom('amu-memo-input'), mBtn = View.getDom('amu-btn-memo'), tNode = View.getDom('amu-tag-input');
+        if (state.selectedIds.size === 1) { const st = state.data.find(d=>d.id===Array.from(state.selectedIds)[0]); if(st && st.memo) sMemo=st.memo; mNode.value=sMemo; mNode.disabled=false; mNode.placeholder="メモを編集"; mBtn.disabled=false; }
+        else { mNode.value=""; mNode.disabled=true; mNode.placeholder="複数選択時は編集不可"; mBtn.disabled=true; }
+        tNode.value = Array.from(uTags).join(' '); tNode.dataset.original = tNode.value;
+        const pSet = new Set(eIds); View.getDom('amu-preview').innerText = state.data.filter(d => pSet.has(d.id)).map(d=>d.content).join('\n---\n');
+        View.cleanupAmuInline(); View.getDom('panel-henshushitsu').classList.add('active');
+      }
+    });
+
+    View.getDom('btn-amu').addEventListener('click', () => { if(tl.classList.contains('select-mode') || state.selectedIds.size > 0) Logic.exitSelectionMode(); else { tl.classList.add('select-mode'); View.updateButtonsState(); } });
+    View.getDom('btn-tweet').addEventListener('click', () => {
+      let c = '';
+      if(state.selectedIds.size===0) { const tk=state.data.filter(d=>d.type!=='list'); if(tk.length===0) return alert('データなし'); c = tk[Math.floor(Math.random()*tk.length)].content; }
+      else c = state.data.filter(d=>state.selectedIds.has(d.id)).map(d=>d.content).join('\n\n');
+      const t = c + '\n#短歌 #tanka #さいきよ'; if(t.length>140) return alert('字数超過'); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(t)}`, '_blank');
+    });
+
+    document.querySelectorAll('input[type="radio"]').forEach(r => r.addEventListener('change', e => {
+      const n = e.target.name, v = e.target.value;
+      if(n==='view-mode') state.config.view=v; else if(n==='filter-mode') state.config.filter=v; else if(n==='font-mode') state.config.font=v; else if(n==='radius-mode') state.config.radius=v;
+      Storage.saveConfig(); View.applyConfig();
+    }));
+
+    tl.addEventListener('click', e => {
+      const el = e.target.closest('.item'); if(!el) return;
+      const id = Number(el.dataset.id);
+      if(tl.classList.contains('select-mode') || el.classList.contains('selecting')) { e.preventDefault(); Logic.togglePoemSelection(el, id); return; }
+      const now = new Date().getTime(), interval = now - state.ui.lastTapTime;
+      if (interval < state.ui.doubleTapThreshold && interval > 0) { e.preventDefault(); clearTimeout(state.ui.tapTimeout); Logic.togglePoemSelection(el, id); state.ui.lastTapTime = 0; }
+      else { state.ui.lastTapTime = now; state.ui.tapTimeout = setTimeout(() => { const i = Array.from(tl.querySelectorAll('.item')).find(x=>Number(x.dataset.id)===id); if(i) i.classList.toggle('open'); state.ui.lastTapTime=0; }, state.ui.doubleTapThreshold); }
+    });
+
+    View.getDom('btn-monochrome').addEventListener('click', () => View.applyColors('#111111', '#E0E0E0', '#FFFFFF'));
+    View.getDom('btn-silver').addEventListener('click', () => View.applyColors('#595857', '#F0EBE1', '#FFFCF5'));
+
+    if(View.getDom('hole-auto')) View.getDom('hole-auto').addEventListener('input', e => {
+      const hex = e.target.value, r = parseInt(hex.slice(1,3),16)||0, g = parseInt(hex.slice(3,5),16)||0, b = parseInt(hex.slice(5,7),16)||0;
+      const mix = (c, rt) => Math.round(c*(1-rt)+255*rt), toHex = c => c.toString(16).padStart(2,'0');
+      View.applyColors(hex, `#${toHex(mix(r,0.85))}${toHex(mix(g,0.85))}${toHex(mix(b,0.85))}`, `#${toHex(mix(r,0.95))}${toHex(mix(g,0.95))}${toHex(mix(b,0.95))}`);
+    });
+    
+    const updManual = () => { if(View.getDom('hole-manual-main')&&View.getDom('hole-manual-sub')&&View.getDom('hole-manual-bg')) View.applyColors(View.getDom('hole-manual-main').value, View.getDom('hole-manual-sub').value, View.getDom('hole-manual-bg').value); };
+    if(View.getDom('hole-manual-main')) { View.getDom('hole-manual-main').addEventListener('input', updManual); View.getDom('hole-manual-sub').addEventListener('input', updManual); View.getDom('hole-manual-bg').addEventListener('input', updManual); }
+  };
+
+  return { init, ...API };
+})();
+
+// HTML上のインラインonclick属性で呼び出されるため、windowオブジェクトへマッピング（最小限の露出）
+window.closePanels = SaikiyoApp.closePanels;
+window.cleanupAmuInline = SaikiyoApp.cleanupAmuInline;
+window.toggleAmuAction = SaikiyoApp.toggleAmuAction;
+window.executeSingleAmuAction = SaikiyoApp.executeSingleAmuAction;
+window.openListEditor = SaikiyoApp.openListEditor;
+window.saveListAndClose = SaikiyoApp.saveListAndClose;
+window.closeListEditor = SaikiyoApp.closeListEditor;
+window.openExpandedReader = SaikiyoApp.openExpandedReader;
+window.openExpandedReaderFromList = SaikiyoApp.openExpandedReaderFromList;
+window.openExpandedReaderFromAmu = SaikiyoApp.openExpandedReaderFromAmu;
+window.openImageGeneratorFromAmu = SaikiyoApp.openImageGeneratorFromAmu;
+window.copyListItems = SaikiyoApp.copyListItems;
+window.toggleKanseiMenu = SaikiyoApp.toggleKanseiMenu;
+window.executeKansei = SaikiyoApp.executeKansei;
+window.kanseiAction = SaikiyoApp.kanseiAction;
+window.resetSettings = SaikiyoApp.resetSettings;
+window.jumpToDate = SaikiyoApp.jumpToDate;
+window.returnToLatest = SaikiyoApp.returnToLatest;
+window.renameApp = SaikiyoApp.renameApp;
+window.setPassphrase = SaikiyoApp.setPassphrase;
+window.checkPassphrase = SaikiyoApp.checkPassphrase;
+window.skipFirstBoot = SaikiyoApp.skipFirstBoot;
+window.showFirstBootInput = SaikiyoApp.showFirstBootInput;
+window.saveFirstBootPass = SaikiyoApp.saveFirstBootPass;
+window.executeChushutsuAction = SaikiyoApp.executeChushutsuAction;
+window.openMitsuyuPanel = SaikiyoApp.openMitsuyuPanel;
+window.executeMitsuyu = SaikiyoApp.executeMitsuyu;
+window.removeDuplicates = SaikiyoApp.removeDuplicates;
+window.updateCustomScrollbar = SaikiyoApp.updateCustomScrollbar;
+window.exitSelectionMode = SaikiyoApp.exitSelectionMode;
+
+// 初期起動
+document.addEventListener('DOMContentLoaded', SaikiyoApp.init);
+
+</script>
+</body>
+</html>
