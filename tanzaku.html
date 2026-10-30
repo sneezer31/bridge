@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>さいきよ 画像化（リファクタリング版）</title>
+<style>
+  :root {
+    --bg-color: #FFFFFF; --text-color: #111111; --font-family: sans-serif;
+  }
+  body {
+    margin: 0; padding: 20px; background-color: var(--bg-color);
+    color: var(--text-color); font-family: var(--font-family);
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .container {
+    width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 15px;
+  }
+  .primary-controls {
+    display: flex; flex-direction: column; gap: 10px; padding: 15px;
+    background: #f8f8f8; border: 1px solid var(--text-color); border-radius: 8px;
+  }
+  .radio-group { display: flex; gap: 15px; font-weight: bold; flex-wrap: wrap; }
+  .radio-group label { cursor: pointer; }
+  textarea {
+    width: 100%; height: 120px; padding: 12px; font-size: 16px; font-family: inherit;
+    box-sizing: border-box; border: 1px solid var(--text-color);
+    background: var(--bg-color); color: var(--text-color); resize: vertical;
+  }
+  button {
+    padding: 14px; font-size: 1.1rem; font-weight: bold;
+    background: var(--bg-color); color: var(--text-color);
+    border: 1px solid var(--text-color); cursor: pointer; width: 100%; border-radius: 4px;
+  }
+  button:hover:not(:disabled) { opacity: 0.7; }
+  button:disabled { opacity: 0.3; cursor: not-allowed; }
+  #btn-preview, #generate-btn { border: 2px solid var(--text-color); }
+  .action-btns { display: flex; gap: 10px; margin-top: 5px; }
+  #btn-preview { flex: 2; }
+  #btn-undo, #btn-redo { flex: 1; font-size: 1rem; }
+  #preview-img {
+    max-width: 100%; height: auto; border: 1px solid var(--text-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: transparent; display: block;
+  }
+  #canvas { display: none; }
+  .settings-panel {
+    display: flex; flex-direction: column; gap: 15px; padding: 15px;
+    border: 1px dashed var(--text-color); border-radius: 8px;
+  }
+  .preset-btns { display: flex; gap: 10px; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .control-group { display: flex; flex-direction: column; gap: 5px; font-size: 0.9rem; }
+  @media (max-width: 600px) {
+    .controls { grid-template-columns: 1fr; }
+    .action-btns button { padding: 12px 5px; font-size: 0.9rem; }
+    #btn-preview { font-size: 1.05rem; white-space: nowrap; }
+  }
+  select, input[type="file"], input[type="number"], input[type="range"] {
+    width: 100%; padding: 8px; font-size: 1rem; font-family: inherit;
+    background: var(--bg-color); color: var(--text-color);
+    border: 1px solid var(--text-color); cursor: pointer; border-radius: 4px; box-sizing: border-box;
+  }
+  input[type="range"] { padding: 0; border: none; height: 38px; }
+  input[type="color"] {
+    width: 100%; height: 44px; padding: 0; border: 1px solid var(--text-color);
+    border-radius: 4px; cursor: pointer; background-color: var(--bg-color);
+  }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
+  #generate-btn { margin-top: 10px; padding: 18px; font-size: 1.2rem; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Kurenaido&family=Zen+Old+Mincho:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="container">
+  <h2>さいきよ 画像化</h2>
+  <div class="primary-controls">
+    <div class="radio-group">
+      <span>文字方向：</span>
+      <label><input type="radio" name="direction" value="vertical" checked> 縦書き</label>
+      <label><input type="radio" name="direction" value="horizontal"> 横書き</label>
+    </div>
+    <div class="radio-group">
+      <span>キャンバス：</span>
+      <label><input type="radio" name="ratio" value="portrait" checked> 縦長 (4:5)</label>
+      <label><input type="radio" name="ratio" value="square"> 正方形 (1:1)</label>
+      <label><input type="radio" name="ratio" value="landscape"> 横長 (16:9)</label>
+      <label><input type="radio" name="ratio" value="circle"> 円形 (透過)</label>
+    </div>
+  </div>
+  <textarea id="text-input" placeholder="ここに短歌を入力してください"></textarea>
+  <div class="action-btns">
+    <button type="button" id="btn-undo" disabled>← 戻る</button>
+    <button type="button" id="btn-preview">プレビュー更新</button>
+    <button type="button" id="btn-redo" disabled>進む →</button>
+  </div>
+  <img id="preview-img" alt="プレビュー画像">
+  <canvas id="canvas"></canvas>
+  <div class="settings-panel">
+    <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: -5px;">デザイン設定</div>
+    <div class="preset-btns">
+      <button type="button" data-preset="monochrome">白黒</button>
+      <button type="button" data-preset="silver">銀鼠</button>
+    </div>
+    <div class="controls">
+      <div class="control-group">
+        <label>書体</label>
+        <select id="font-select">
+          <option value="'Zen Old Mincho', serif">オールド明朝 (Zen Old)</option>
+          <option value="'Zen Kaku Gothic New', sans-serif">ゴシック体 (Zen Kaku)</option>
+          <option value="'Zen Kurenaido', sans-serif">手書き風 (Zen Kurenaido)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>文字サイズ (px)</label>
+        <input type="number" id="fontsize-input" value="36" step="1" min="10">
+      </div>
+      <div class="control-group">
+        <label>行間 (倍率)</label>
+        <input type="number" id="spacing-input" value="1.8" step="0.1" min="1.0">
+      </div>
+      <div class="control-group">
+        <label>文字の縁取り</label>
+        <select id="stroke-select">
+          <option value="none">なし</option>
+          <option value="white">白縁</option>
+          <option value="gray">灰色縁</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>文字の背景帯</label>
+        <select id="bg-ribbon-select">
+          <option value="none">なし</option>
+          <option value="white">白帯</option>
+          <option value="black">黒帯</option>
+        </select>
+      </div>
+      <div class="control-group" id="ribbon-opacity-group">
+        <label>帯の濃さ</label>
+        <input type="range" id="ribbon-opacity-input" min="0" max="100" value="55" step="1">
+      </div>
+      <div class="control-group">
+        <label>文字色</label>
+        <input type="color" id="color-text" value="#111111">
+      </div>
+      <div class="control-group">
+        <label>背景色</label>
+        <input type="color" id="color-bg" value="#FFFFFF">
+      </div>
+      
+      <div class="control-group">
+        <label>背景画像</label>
+        <input type="file" id="bg-image-input" accept="image/*">
+      </div>
+      
+      <div class="control-group">
+  <label>文字の切り抜きツール</label>
+  <button type="button" id="btn-extract" style="padding: 10px; font-size: 0.9rem; border: 1px solid var(--text-color);">背景を透過して文字を保存</button>
+</div>      <div class="control-group">
+        <label>画像の濃さ</label>
+        <input type="range" id="bg-opacity-input" min="0.1" max="1" step="0.05" value="1">
+      </div>
+    </div>
+  </div>
+  <button type="button" id="generate-btn">決定（画像を保存）</button>
+</div>
+
+<script>
+/**
+ * UI State & Elements Dictionary
+ */
+const UI = {
+  text: document.getElementById('text-input'),
+  font: document.getElementById('font-select'),
+  fontSize: document.getElementById('fontsize-input'),
+  spacing: document.getElementById('spacing-input'),
+  stroke: document.getElementById('stroke-select'),
+  bgRibbon: document.getElementById('bg-ribbon-select'),
+  ribbonOpacity: document.getElementById('ribbon-opacity-input'),
+  ribbonOpacityGroup: document.getElementById('ribbon-opacity-group'),
+  colorText: document.getElementById('color-text'),
+  colorBg: document.getElementById('color-bg'),
+  bgImageInput: document.getElementById('bg-image-input'),
+  bgOpacity: document.getElementById('bg-opacity-input'),
+  btnPreview: document.getElementById('btn-preview'),
+  btnUndo: document.getElementById('btn-undo'),
+  btnRedo: document.getElementById('btn-redo'),
+  btnGenerate: document.getElementById('generate-btn'),
+  btnExtract: document.getElementById('btn-extract'), // 抽出ボタン参照追加
+  canvas: document.getElementById('canvas'),
+  ctx: document.getElementById('canvas').getContext('2d'),
+  previewImg: document.getElementById('preview-img')
+};
+
+// Global App State
+const AppState = {
+  uploadedBgImage: null,
+  history: [],
+  historyIndex: -1,
+};
+
+/**
+ * ユーティリティ・ステート管理モジュール
+ */
+const Utils = {
+  getRadioValue: (name) => document.querySelector(`input[name="${name}"]:checked`).value,
+  setRadioValue: (name, value) => {
+    const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
+    if (radio) radio.checked = true;
+  },
+  updateRibbonOpacityState: () => {
+    const isNone = UI.bgRibbon.value === 'none';
+    UI.ribbonOpacity.disabled = isNone;
+    UI.ribbonOpacityGroup.style.opacity = isNone ? '0.4' : '1.0';
+  },
+  captureState: () => ({
+    direction: Utils.getRadioValue('direction'), ratio: Utils.getRadioValue('ratio'), text: UI.text.value,
+    font: UI.font.value, fontSize: UI.fontSize.value, spacing: UI.spacing.value,
+    stroke: UI.stroke.value, bgRibbon: UI.bgRibbon.value, ribbonOpacity: UI.ribbonOpacity.value,
+    colorText: UI.colorText.value, colorBg: UI.colorBg.value, bgImage: AppState.uploadedBgImage, bgOpacity: UI.bgOpacity.value
+  }),
+  saveState: () => {
+    if (AppState.historyIndex < AppState.history.length - 1) {
+      AppState.history = AppState.history.slice(0, AppState.historyIndex + 1);
+    }
+    AppState.history.push(Utils.captureState());
+    AppState.historyIndex++;
+    Utils.updateHistoryButtons();
+  },
+  restoreState: (index) => {
+    if (index < 0 || index >= AppState.history.length) return;
+    const s = AppState.history[index];
+    Utils.setRadioValue('direction', s.direction); Utils.setRadioValue('ratio', s.ratio);
+    UI.text.value = s.text; UI.font.value = s.font; UI.fontSize.value = s.fontSize; UI.spacing.value = s.spacing;
+    UI.stroke.value = s.stroke; UI.colorText.value = s.colorText; UI.colorBg.value = s.colorBg;
+    if (s.bgRibbon) UI.bgRibbon.value = s.bgRibbon;
+    if (s.ribbonOpacity !== undefined) UI.ribbonOpacity.value = s.ribbonOpacity;
+    if (s.bgOpacity !== undefined) UI.bgOpacity.value = s.bgOpacity;
+    AppState.uploadedBgImage = s.bgImage;
+    AppState.historyIndex = index;
+    Utils.updateRibbonOpacityState(); Utils.updateHistoryButtons(); CoreRender.draw();
+  },
+  updateHistoryButtons: () => {
+    UI.btnUndo.disabled = AppState.historyIndex <= 0;
+    UI.btnRedo.disabled = AppState.historyIndex >= AppState.history.length - 1;
+  }
+};
+
+/**
+ * 描画コアエンジン
+ */
+const CoreRender = {
+  applyCanvasRatio: () => {
+    const ratio = Utils.getRadioValue('ratio');
+    if (ratio === 'portrait') { UI.canvas.width = 1080; UI.canvas.height = 1350; }
+    else if (ratio === 'square' || ratio === 'circle') { UI.canvas.width = 1080; UI.canvas.height = 1080; }
+    else if (ratio === 'landscape') { UI.canvas.width = 1200; UI.canvas.height = 675; }
+  },
+
+  drawBackground: (width, height, ratio) => {
+    const ctx = UI.ctx;
+    if (ratio === 'circle') {
+      ctx.beginPath();
+      ctx.arc(width / 2, height / 2, Math.min(width, height) / 2, 0, Math.PI * 2);
+      ctx.clip();
+    }
+    ctx.fillStyle = UI.colorBg.value;
+    ctx.fillRect(0, 0, width, height);
+
+    if (AppState.uploadedBgImage) {
+      ctx.save();
+      ctx.globalAlpha = parseFloat(UI.bgOpacity.value);
+      const img = AppState.uploadedBgImage;
+      const hRatio = width / img.width; const vRatio = height / img.height;
+      const imgRatio = Math.max(hRatio, vRatio);
+      const cx = (width - img.width * imgRatio) / 2;
+      const cy = (height - img.height * imgRatio) / 2;
+      ctx.drawImage(img, 0, 0, img.width, img.height, cx, cy, img.width * imgRatio, img.height * imgRatio);
+      ctx.restore();
+    }
+  },
+
+  drawRibbon: (ctx, x, y, w, h) => {
+    if (UI.bgRibbon.value === 'none') return;
+    ctx.save();
+    ctx.globalAlpha = (parseFloat(UI.ribbonOpacity.value) || 55) / 100;
+    ctx.fillStyle = UI.bgRibbon.value === 'white' ? '#FFFFFF' : '#000000';
+    ctx.fillRect(x, y, w, h);
+    ctx.restore();
+  },
+
+  renderSpecialSymbol: (ctx, char, currentX, currentY, fontSize, symLength) => {
+    const isWave = (char === '〜' || char === '～');
+    const symThick = Math.max(2, fontSize * 0.08);
+    const symStartY = currentY + (fontSize - symLength) / 2;
+    const symEndY = symStartY + symLength;
+    const strokeMode = UI.stroke.value;
+    
+    ctx.save();
+    ctx.beginPath();
+    if (isWave) {
+      const amp = fontSize * 0.15;
+      ctx.moveTo(currentX, symStartY);
+      ctx.bezierCurveTo(currentX + amp, symStartY + symLength * 0.25, currentX - amp, symStartY + symLength * 0.75, currentX, symEndY);
+    } else {
+      ctx.moveTo(currentX, symStartY);
+      ctx.lineTo(currentX, symEndY);
+    }
+    ctx.lineCap = 'round';
+    if (strokeMode !== 'none') {
+      ctx.strokeStyle = strokeMode === 'white' ? '#FFFFFF' : '#888888';
+      ctx.lineWidth = symThick + 6;
+      ctx.stroke();
+    }
+    ctx.strokeStyle = UI.colorText.value;
+    ctx.lineWidth = symThick;
+    ctx.stroke();
+    ctx.restore();
+  },
+
+  drawVerticalText: (ctx, lines, width, height, fontSize, spacingRatio) => {
+    const charStepY = fontSize * 1.15;
+    const lineStepX = fontSize * spacingRatio;
+    const marginX = fontSize * 0.8; const marginY = fontSize * 1.2;
+
+    let maxChars = 0; let blockWidthOffset = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i] === "") blockWidthOffset += lineStepX * 0.5;
+      else {
+        if (i !== 0) blockWidthOffset += lineStepX;
+        if (lines[i].length > maxChars) maxChars = lines[i].length;
+      }
+    }
+
+    const blockHeight = maxChars * charStepY;
+    const startY = Math.max(50, (height - blockHeight) / 2);
+
+    CoreRender.drawRibbon(ctx, (width - (blockWidthOffset + fontSize)) / 2 - marginX, startY - marginY, (blockWidthOffset + fontSize) + marginX * 2, blockHeight + marginY * 2);
+
+    ctx.fillStyle = UI.colorText.value;
+    const strokeMode = UI.stroke.value;
+    let currentX = (width + blockWidthOffset + fontSize) / 2 - fontSize / 2;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line === "") { currentX -= lineStepX * 0.5; continue; }
+      let currentY = startY;
+
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        let drawChar = char; let offsetX = 0; let offsetY = 0;
+        
+        if (char === '「') drawChar = '﹁'; else if (char === '」') drawChar = '﹂';
+        else if (char === '『') drawChar = '﹃'; else if (char === '』') drawChar = '﹄';
+        else if (char === '（') drawChar = '︵'; else if (char === '）') drawChar = '︶';
+        else if (char === '、') drawChar = '︑'; else if (char === '。') drawChar = '︒';
+        else if ('ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ'.includes(char)) {
+          offsetX = fontSize * 0.15; offsetY = -fontSize * 0.15;
+        }
+
+        if (char === 'ー' || char === '―' || char === '〜' || char === '～') {
+          CoreRender.renderSpecialSymbol(ctx, char, currentX, currentY, fontSize, fontSize * 0.65);
+          currentY += charStepY;
+          continue;
+        }
+
+        ctx.textBaseline = 'top'; ctx.textAlign = 'center';
+        if (strokeMode !== 'none') {
+          ctx.strokeStyle = strokeMode === 'white' ? '#FFFFFF' : '#888888';
+          ctx.lineWidth = 6; ctx.lineJoin = 'round';
+          ctx.strokeText(drawChar, currentX + offsetX, currentY + offsetY);
+        }
+        ctx.fillText(drawChar, currentX + offsetX, currentY + offsetY);
+        currentY += charStepY;
+      }
+      currentX -= lineStepX;
+    }
+  },
+
+  drawHorizontalText: (ctx, lines, width, height, fontSize, spacingRatio) => {
+    ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+    const lineStepY = fontSize * spacingRatio;
+    let maxLineWidth = 0;
+    for (const line of lines) {
+      const metrics = ctx.measureText(line);
+      if(metrics.width > maxLineWidth) maxLineWidth = metrics.width;
+    }
+    const blockHeight = lines.length * lineStepY;
+    let currentY = Math.max(50, (height - blockHeight) / 2);
+    const startX = (width - maxLineWidth) / 2;
+    const marginX = fontSize * 0.8; const marginY = fontSize * 1.2;
+
+    const actualBlockHeight = lines.length > 0 ? (lines.length - 1) * lineStepY + fontSize : 0;
+    CoreRender.drawRibbon(ctx, startX - marginX, currentY - marginY, maxLineWidth + marginX * 2, actualBlockHeight + marginY * 2);
+
+    ctx.fillStyle = UI.colorText.value;
+    const strokeMode = UI.stroke.value;
+    for (const line of lines) {
+      if (strokeMode !== 'none') {
+        ctx.strokeStyle = strokeMode === 'white' ? '#FFFFFF' : '#888888';
+        ctx.lineWidth = 6; ctx.lineJoin = 'round';
+        ctx.strokeText(line, startX, currentY);
+      }
+      ctx.fillText(line, startX, currentY);
+      currentY += lineStepY;
+    }
+  },
+
+  draw: () => {
+    CoreRender.applyCanvasRatio();
+    const ctx = UI.ctx; const w = UI.canvas.width; const h = UI.canvas.height;
+    const direction = Utils.getRadioValue('direction');
+    const ratio = Utils.getRadioValue('ratio');
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    
+    CoreRender.drawBackground(w, h, ratio);
+
+    const rawText = UI.text.value.replace(/\(/g, '（').replace(/\)/g, '）').replace(/…/g, '︙');
+    const lines = rawText.split('\n');
+    const fontSize = parseFloat(UI.fontSize.value) || 36;
+    const spacingRatio = parseFloat(UI.spacing.value) || 1.8;
+    ctx.font = `normal 400 ${fontSize}px ${UI.font.value}`;
+
+    if (direction === 'vertical') {
+      CoreRender.drawVerticalText(ctx, lines, w, h, fontSize, spacingRatio);
+    } else {
+      CoreRender.drawHorizontalText(ctx, lines, w, h, fontSize, spacingRatio);
+    }
+
+    ctx.restore();
+    UI.previewImg.src = UI.canvas.toDataURL('image/png');
+  }
+};
+
+/**
+ * 記号画像 自動抽出・正規化モジュール（DL機能）
+ */
+function extractAndDownloadSymbol() {
+  const img = AppState.uploadedBgImage;
+  if (!img) {
+    alert("まずは「背景画像」から、切り抜きたい画像を読み込んでください。");
+    return;
+  }
+
+  const cvs = document.createElement('canvas');
+  cvs.width = img.width; cvs.height = img.height;
+  const ctx = cvs.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+
+  const imgData = ctx.getImageData(0, 0, cvs.width, cvs.height);
+  const data = imgData.data;
+  let minX = cvs.width, minY = cvs.height, maxX = 0, maxY = 0;
+  let found = false;
+
+  for (let y = 0; y < cvs.height; y++) {
+    for (let x = 0; x < cvs.width; x++) {
+      const i = (y * cvs.width + x) * 4;
+      const r = data[i], g = data[i+1], b = data[i+2];
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+      
+      if (luminance < 100) {
+        data[i] = 0; data[i+1] = 0; data[i+2] = 0; 
+        data[i+3] = 255; 
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+        found = true;
+      } else {
+        data[i+3] = 0;
+      }
+    }
+  }
+
+  if (!found) {
+    alert("抽出できる濃い文字や線が見つかりませんでした。");
+    return;
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+
+  const cropW = maxX - minX + 1;
+  const cropH = maxY - minY + 1;
+  const cropCvs = document.createElement('canvas');
+  cropCvs.width = cropW; cropCvs.height = cropH;
+  const cropCtx = cropCvs.getContext('2d');
+  cropCtx.drawImage(cvs, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+
+  const dataUrl = cropCvs.toDataURL('image/png');
+  
+  if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+    const newWin = window.open();
+    newWin.document.write('<p>長押しして画像を保存してください</p><img src="' + dataUrl + '" style="border:1px solid #ccc; max-width:100%;">');
+  } else {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const filename = `parts_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.png`;
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = dataUrl;
+    link.click();
+  }
+}
+
+/**
+ * Event Listeners Registration
+ */
+function initEvents() {
+  UI.bgRibbon.addEventListener('change', () => { Utils.updateRibbonOpacityState(); CoreRender.draw(); });
+  UI.ribbonOpacity.addEventListener('input', CoreRender.draw);
+  UI.bgImageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const r = new FileReader();
+      r.onload = (event) => { const img = new Image(); img.onload = () => { AppState.uploadedBgImage = img; }; img.src = event.target.result; };
+      r.readAsDataURL(file);
+    } else { AppState.uploadedBgImage = null; }
+  });
+
+  document.querySelectorAll('.preset-btns button').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const type = e.target.dataset.preset;
+      if (type === 'monochrome') { UI.colorText.value = '#111111'; UI.colorBg.value = '#FFFFFF'; }
+      else if (type === 'silver') { UI.colorText.value = '#333333'; UI.colorBg.value = '#F5F5F0'; }
+      AppState.uploadedBgImage = null; UI.bgImageInput.value = ''; UI.bgOpacity.value = '1';
+    });
+  });
+
+  UI.btnPreview.addEventListener('click', () => {
+    Utils.saveState();
+    document.fonts.load(`normal 400 ${parseFloat(UI.fontSize.value) || 36}px ${UI.font.value}`).then(() => CoreRender.draw());
+  });
+  UI.btnUndo.addEventListener('click', () => Utils.restoreState(AppState.historyIndex - 1));
+  UI.btnRedo.addEventListener('click', () => Utils.restoreState(AppState.historyIndex + 1));
+  document.querySelectorAll('input[name="direction"], input[name="ratio"]').forEach(r => r.addEventListener('change', CoreRender.draw));
+
+  UI.btnGenerate.addEventListener('click', () => {
+    Utils.saveState(); CoreRender.draw();
+    if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) { alert("【iPhoneをご利用の方へ】\n長押しして画像を保存してください。"); return; }
+    const d = new Date(); const p = n => String(n).padStart(2, '0');
+    const link = document.createElement('a');
+    link.download = `tanka_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.png`;
+    link.href = UI.canvas.toDataURL('image/png'); link.click();
+  });
+  
+  // 抽出ボタンのイベントバインド
+  UI.btnExtract.addEventListener('click', extractAndDownloadSymbol);
+
+  window.addEventListener('load', () => {
+    Utils.updateRibbonOpacityState();
+    document.fonts.ready.then(() => {
+      setTimeout(() => { if (AppState.history.length === 0) Utils.saveState(); CoreRender.draw(); }, 200);
+    });
+  });
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) document.fonts.ready.then(() => setTimeout(() => CoreRender.draw(), 50));
+  });
+}
+
+// 起動
+initEvents();
+</script>
+</body>
+</html>
