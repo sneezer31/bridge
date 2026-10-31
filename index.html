@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
+<link rel="manifest" href="./manifest.json">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -78,6 +80,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="incredible.js"></script>
+  
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('[System] Service Worker 登録完了', reg.scope))
+        .catch(err => console.warn('[System] Service Worker 登録失敗', err));
+    });
+  }
+</script>
 
 </body>
 </html>
