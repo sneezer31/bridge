@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ARGUS - 機関室</title>
     <style>
-        /* 計器盤に特化した無骨なデザイン */
         :root { --bg: #050505; --text: #00ff00; --border: #333; }
         body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; padding: 20px; margin: 0; }
         h1 { color: #ff9800; border-bottom: 1px dashed var(--border); padding-bottom: 10px; font-size: 1.5em; }
@@ -17,9 +16,6 @@
         .monitor { border: 1px solid var(--border); padding: 15px; background: #0a0a0a; overflow-y: auto; }
         .json-block { border-bottom: 1px dashed #222; margin-bottom: 15px; padding-bottom: 15px; white-space: pre-wrap; word-break: break-all; font-size: 0.85em; }
     </style>
-    <!-- Firebase CDN -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <h1>ARGUS [ RAW DATA MONITOR ]</h1>
@@ -31,17 +27,24 @@
 
     <div class="grid">
         <div class="monitor">
-            <h3 style="color:#00bcd4;">[ LOCAL: IndexedDB ]</h3>
+            <h3 style="color:#00bcd4;">[ LOCAL: BridgeDB / records ]</h3>
             <div id="local-view">Standby...</div>
         </div>
         <div class="monitor">
-            <h3 style="color:#f44336;">[ CLOUD: Firebase ]</h3>
+            <h3 style="color:#f44336;">[ CLOUD: Firebase / records ]</h3>
             <div id="cloud-view">Standby...</div>
         </div>
     </div>
 
+    <!-- 1. Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    
+    <!-- 2. 設定とエンジン -->
     <script src="firebase-config.js"></script>
     <script src="incredible.js"></script>
+    
+    <!-- 3. スキャン実行ロジック -->
     <script>
         document.getElementById('btn-scan').addEventListener('click', async () => {
             const localView = document.getElementById('local-view');
@@ -49,9 +52,9 @@
             localView.innerText = 'Scanning...';
             cloudView.innerText = 'Scanning...';
             
-            // 1. Firebaseの生データ取得
+            // クラウドデータの取得 (ミリ秒IDの降順で最新20件)
             try {
-                const snap = await window.db.collection('records').orderBy('updatedAt', 'desc').limit(20).get();
+                const snap = await window.db.collection('records').orderBy('id', 'desc').limit(20).get();
                 let cloudHtml = '';
                 snap.forEach(doc => { cloudHtml += `<div class="json-block">${JSON.stringify(doc.data(), null, 2)}</div>`; });
                 cloudView.innerHTML = cloudHtml || 'データなし';
@@ -59,12 +62,11 @@
                 cloudView.innerHTML = `<span style="color:red;">Error: ${e.message}</span>`;
             }
 
-            // 2. IndexedDBの生データ取得
+            // ローカルデータの取得 (ミリ秒IDの降順で最新20件)
             try {
                 const localData = await IncredibleEngine.getAll();
                 let localHtml = '';
-                // 視認性のため、クラウド側と同じく新しい順に20件表示
-                localData.sort((a, b) => (b.updatedAt || b.id) - (a.updatedAt || a.id))
+                localData.sort((a, b) => b.id - a.id)
                          .slice(0, 20)
                          .forEach(doc => {
                     localHtml += `<div class="json-block">${JSON.stringify(doc, null, 2)}</div>`;
