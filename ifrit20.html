@@ -801,22 +801,30 @@
 
             try {
     // ① 面倒な設定不要。単純に「ID（時間）が新しい順に最新100件」だけダウンロードする
-    var chatSnap = await db.collection("records")
-        .orderBy("id", "desc") 
-        .limit(100) 
-        .get();
+// 【追加するコード（完全版）】
+// 1. ローカルからゼロ秒で読み込み、最新100件だけを切り出して即座に画面へ反映
+var localData = await IncredibleEngine.getAll();
+var allChats = localData.filter(d => d.app_type === "chat" && d.status === "published");
 
-    chatLogArray = [];
-    chatSnap.forEach(doc => {
-        var d = doc.data();
-        // ② 拾ってきた最新100件の中から、チャット（かつ有効なもの）だけをメモリに残す
-        if (d.app_type === "chat" && d.status === "published") { 
-            chatLogArray.push(d); 
-        }
-    });
+// 新しい順（降順）に並び替えてから、最新の100件だけを切り出し、最後に表示用の時系列（昇順）に戻す
+allChats.sort((a, b) => b.id - a.id);
+chatLogArray = allChats.slice(0, 100).reverse();
 
-    // ③ メモリに残ったログを、正常な時系列（古い順）に戻す
-    chatLogArray.sort((a, b) => a.id - b.id);
+renderLogs(); 
+
+// 2. 画面展開後、裏側でクラウドと差分同期（バトンリレーの受け取り）
+IncredibleEngine.forceSync().then(async (result) => {
+    if (result.pulled > 0) {
+        var updatedData = await IncredibleEngine.getAll();
+        var updatedChats = updatedData.filter(d => d.app_type === "chat" && d.status === "published");
+        
+        updatedChats.sort((a, b) => b.id - a.id);
+        chatLogArray = updatedChats.slice(0, 100).reverse();
+        
+        renderLogs();
+    }
+}).catch(e => console.warn("起動時バックグラウンド同期保留:", e));
+
 
 } catch(e) { 
     console.error("チャット読込エラー", e); 
