@@ -59,20 +59,21 @@
                 cloudView.innerHTML = `<span style="color:red;">Error: ${e.message}</span>`;
             }
 
-            // 2. IndexedDBの生データ取得 (※IncredibleEngine側に getAll() メソッドを要求)
+            // 2. IndexedDBの生データ取得
             try {
-                // IncredibleEngine実装時に getAll() を追加して連携させます
-                localView.innerHTML = '<div class="json-block">※栞・かなえに IncredibleEngine 側の getAll() メソッド実装を指示してください。</div>';
+                const localData = await IncredibleEngine.getAll();
+                let localHtml = '';
+                // 視認性のため、クラウド側と同じく新しい順に20件表示
+                localData.sort((a, b) => (b.updatedAt || b.id) - (a.updatedAt || a.id))
+                         .slice(0, 20)
+                         .forEach(doc => {
+                    localHtml += `<div class="json-block">${JSON.stringify(doc, null, 2)}</div>`;
+                });
+                localView.innerHTML = localHtml || 'データなし';
             } catch(e) {
                 localView.innerHTML = `<span style="color:red;">Error: ${e.message}</span>`;
             }
         });
     </script>
-  <!-- アプリのHTMLにこれを書き足すだけ -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="incredible.js"></script>
-
 </body>
 </html>
