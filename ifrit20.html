@@ -921,8 +921,9 @@
                 
                 chatLogArray.push(userLog); 
                 appendLogElement(chatLogArray.length - 1);
-                await db.collection("records").doc(nowNum.toString()).set(userLog);
-                
+                await IncredibleEngine.saveLocal(userLog);
+IncredibleEngine.forceSync().catch(e => console.warn("バックグラウンド同期保留:", e)); // 待たずに裏で投げる
+
                 if (currentFiles) { clearPostedFiles(); }
 
                 setTimeout(() => { inputArea.value = ""; }, 10);
@@ -951,7 +952,8 @@
                     sessionWaltzCount++; localStorage.setItem(WALTZ_COUNT_VAULT, sessionWaltzCount);
                     appendLogElement(chatLogArray.length - 1);
                     updateMailbox(aiResponseText);
-                    await db.collection("records").doc(aiNum.toString()).set(aiLog);
+                    await IncredibleEngine.saveLocal(aiLog);
+IncredibleEngine.forceSync().catch(e => console.warn("バックグラウンド同期保留:", e)); // 待たずに裏で投げる
                 }
 
                 var lenBefore = chatLogArray.length;
