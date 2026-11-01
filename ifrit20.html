@@ -13,6 +13,9 @@
     <!-- Firebase v9 compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+  
+    <script src="firebase-config.js"></script>
+    <script src="incredible.js"></script>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -242,18 +245,8 @@
     </div>
 
     <script>
-        // ▼ Firebaseの初期化 (船長のConfig)
-        const firebaseConfig = {
-            apiKey: "AIzaSyAlz26igDEILsZBL5LrVVynx6KlsKu6e8U",
-            authDomain: "sneezer31-78845.firebaseapp.com",
-            projectId: "sneezer31-78845",
-            storageBucket: "sneezer31-78845.firebasestorage.app",
-            messagingSenderId: "1094107940035",
-            appId: "1:1094107940035:web:2f5cfbcccf313feac7ce76"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-      db.settings({ experimentalForceLongPolling: true });
+                // 共通モジュールからデータベース接続を引き継ぐ
+        const db = window.db;
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -964,11 +957,7 @@ IncredibleEngine.forceSync().catch(e => console.warn("バックグラウンド�
             }
         };
     </script>
-  <!-- アプリのHTMLにこれを書き足すだけ -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="incredible.js"></script>
+
 
 </body>
 </html>
