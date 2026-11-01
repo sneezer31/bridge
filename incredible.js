@@ -1,6 +1,6 @@
 const IncredibleEngine = (() => {
     const DB_NAME = 'BridgeDB';
-    const STORE_NAME = 'records';
+    const STORE_NAME = 'records'; // 棚は分けない。すべてここへ突っ込む
     let dbInstance = null;
 
     // 1. IndexedDBの初期化・接続
@@ -22,7 +22,7 @@ const IncredibleEngine = (() => {
         });
     };
 
-    // 2. ローカルデータの全件取得 (アルゴス用)
+    // 2. ローカルデータの全件取得 (アルゴスでの目視用)
     const getAll = async () => {
         const db = await initDB();
         return new Promise((resolve, reject) => {
@@ -34,14 +34,22 @@ const IncredibleEngine = (() => {
         });
     };
 
-    // 3. 空箱の物理削除と遅延結合マッパー
+    // 3. ペイロードの削ぎ落としとキーの矯正（マッパー）
     const cleanPayload = (data) => {
         const payload = { ...data };
         
-        // updatedAtが存在しない（新規）場合は付与
-        if (!payload.updatedAt) payload.updatedAt = Date.now();
+        // 20号等の表記揺れ (updated_at) を updatedAt に強制統一
+        if (payload.updated_at) {
+            payload.updatedAt = payload.updated_at;
+            delete payload.updated_at;
+        }
+        if (payload.created_at) {
+            payload.createdAt = payload.created_at;
+            delete payload.created_at;
+        }
+        if (!payload.updatedAt) payload.updatedAt = payload.id || Date.now();
         
-        // 値が空のキーを完全排除
+        // 空箱の物理排除 (通信コストの極小化)
         Object.keys(payload).forEach(key => {
             const val = payload[key];
             if (val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0)) {
@@ -51,13 +59,15 @@ const IncredibleEngine = (() => {
         return payload;
     };
 
-    // 4. 強制監査・同期 (インクレディブルボタン発火用)
+    // 4. 強制監査・同期エンジン本体
     const forceSync = async () => {
         const db = await initDB();
+        
+        // ローカルデータの展開
         const localData = await getAll();
         const localMap = new Map(localData.map(d => [String(d.id), d]));
 
-        // クラウド(Firestore)の records 棚から全件取得
+        // クラウド(Firestore)の records コレクションから全件取得（フラット構造）
         const snap = await window.db.collection('records').get();
         const cloudData = [];
         snap.forEach(doc => cloudData.push(doc.data()));
@@ -72,13 +82,23 @@ const IncredibleEngine = (() => {
 
         for (const [id, lData] of localMap.entries()) {
             const cData = cloudMap.get(id);
-            // クラウドに存在しない、またはローカルのほうが新しい場合
-            if (!cData || lData.updatedAt > cData.updatedAt) {
+            // 比較用に時間を取得（揺れに対応）
+            const lTime = lData.updatedAt || lData.updated_at || lData.id;
+            const cTime = cData ? (cData.updatedAt || cData.updated_at || cData.id) : 0;
+            
+            // クラウドにない、またはローカル側が新しい場合のみPush
+            if (!cData || lTime > cTime) {
                 const cleaned = cleanPayload(lData); // マッパー通過
                 const docRef = window.db.collection('records').doc(id);
-                batch.set(docRef, cleaned);
+                batch.set(docRef, cleaned); // 上書き
                 batchCount++;
                 pushed++;
+                
+                // Firestoreのバッチ制限(500件)を考慮
+                if (batchCount === 500) {
+                    await batch.commit();
+                    batchCount = 0;
+                }
             }
         }
         if (batchCount > 0) await batch.commit();
@@ -89,9 +109,13 @@ const IncredibleEngine = (() => {
         
         for (const [id, cData] of cloudMap.entries()) {
             const lData = localMap.get(id);
-            // ローカルに存在しない、またはクラウドのほうが新しい場合
-            if (!lData || cData.updatedAt > lData.updatedAt) {
-                pullStore.put(cData);
+            const lTime = lData ? (lData.updatedAt || lData.updated_at || lData.id) : 0;
+            const cTime = cData.updatedAt || cData.updated_at || cData.id;
+
+            // ローカルにない、またはクラウド側が新しい場合のみPull
+            if (!lData || cTime > lTime) {
+                const normalized = cleanPayload(cData); // 保存前にローカル側も綺麗にする
+                pullStore.put(normalized);
                 pulled++;
             }
         }
