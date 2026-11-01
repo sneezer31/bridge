@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +7,6 @@
     <link rel="manifest" href="./manifest.json">
     <title>BRIDGE - Personal Data Hub</title>
 
-    
     <!-- 最適化4: Firebase通信初速の最大化（プリコネクト） -->
     <link rel="preconnect" href="https://firestore.googleapis.com">
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
@@ -58,40 +56,38 @@
         </div>
     </div>
 
-    <!-- 共通設定と同期エンジンの読み込み（フラット構造） -->
+    <!-- 1. まずFirebaseのSDKを最優先で読み込む -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    
+    <!-- 2. 次にFirebaseの設定を読み込む (ここで window.db が定義される) -->
     <script src="firebase-config.js"></script>
+    
+    <!-- 3. インクレディブル・エンジン本体 (外部ファイルから読み込む) -->
     <script src="incredible.js"></script>
     
+    <!-- 4. UIの物理結線とService Worker -->
     <script>
-        // インクレディブル・ボタンの物理結線とフィードバック出力
         document.getElementById('btn-incredible').addEventListener('click', async () => {
             const board = document.getElementById('status-board');
             board.innerHTML = '[SYSTEM] Incredible Engine 起動中...<br>IndexedDBとFirebaseの全件照合を実行しています...';
             
             try {
-                // incredible.js 側に実装する強制同期メソッドを叩く
                 const result = await IncredibleEngine.forceSync();
                 board.innerHTML = `[SUCCESS] 監査完了。<br>クラウドへ退避: ${result.pushed} 件<br>ローカルへ補完: ${result.pulled} 件`;
             } catch (error) {
                 board.innerHTML = `<span style="color:red;">[ERROR] 監査失敗: ${error.message}</span>`;
+                console.error(error);
             }
         });
-    </script>
-  <!-- アプリのHTMLにこれを書き足すだけ -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="incredible.js"></script>
-  
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('[System] Service Worker 登録完了', reg.scope))
-        .catch(err => console.warn('[System] Service Worker 登録失敗', err));
-    });
-  }
-</script>
 
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('[System] Service Worker 登録完了', reg.scope))
+                    .catch(err => console.warn('[System] Service Worker 登録失敗', err));
+            });
+        }
+    </script>
 </body>
 </html>
