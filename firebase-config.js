@@ -13,4 +13,4 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 window.db = firebase.firestore();
-window.db.settings({ experimentalForceLongPolling: true });
+window.db.settings({ experimentalForceLongPolling: true, merge: true });
