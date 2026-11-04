@@ -639,11 +639,12 @@ if (sendLogs.length === 0) return null;
 
             var allContents = [];
 sendLogs.forEach(function(log) {
-var allContents = [];
-sendLogs.forEach(function(log) {
-var role = log.crew === "船長" ? "user" : "model";
-var parts = [{ text: log.text }];
-​if (log.attachedFiles && log.attachedFiles.length > 0) {
+            var allContents = [];
+            sendLogs.forEach(function(log) {
+                var role = log.crew === "船長" ? "user" : "model";
+                var parts = [{ text: log.text }];
+                
+                if (log.attachedFiles && log.attachedFiles.length > 0) {
                     log.attachedFiles.forEach(function(f) {
                         parts.push({ text: "\n\n[参照ファイル: " + f.name + "]\n" + f.content });
                     });
@@ -656,6 +657,7 @@ var parts = [{ text: log.text }];
                     allContents.push({ role: role, parts: parts }); 
                 }
             });
+
 
             var sysPrompt = document.getElementById("sys-prompt").value || "";
             var savedInfo = document.getElementById("saved-info").value || "";
@@ -887,13 +889,20 @@ return (log.time ? "【" + log.time + "】 " : "") + log.crew + "：\n" + log.te
                 
                 var nowNum = Date.now();
                 var userLog = {
-id: nowNum,
-crew: "船長",
-time: getFormattedTime(),
-text: text || "（ファイルのみ送信）",
-attachedFiles: currentFiles || [],
-updated_at: nowNum
-await db.collection("chats").doc(nowNum.toString()).set(userLog);
+                var nowNum = Date.now();
+                var userLog = { 
+                    id: nowNum,
+                    crew: "船長", 
+                    time: getFormattedTime(), 
+                    text: text || "（ファイルのみ送信）", 
+                    attachedFiles: currentFiles || [],
+                    updated_at: nowNum
+                };
+                
+                chatLogArray.push(userLog); 
+                appendLogElement(chatLogArray.length - 1);
+                await db.collection("chats").doc(nowNum.toString()).set(userLog);
+
 
                 if (currentFiles) { clearPostedFiles(); }
 
