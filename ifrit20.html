@@ -14,8 +14,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
   
-    <script src="firebase-config.js"></script>
-    <script src="incredible.js"></script>
+  
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -161,7 +160,7 @@
             <div class="console-title">ログ管理</div>
             <button class="btn-warning" id="copy-checked-btn">チェック項目をコピー</button>
             <button class="btn-warning" id="delete-checked-btn">チェック項目を削除</button>
-            <button class="btn-danger" id="reset-btn" style="margin-top: 15px;">全ログ強制消去</button>
+            
         </div>
         
         <div style="margin-top: auto; padding-top: 15px; text-align: center; color: #ecf0f1; font-size: 11px; font-weight: normal; opacity: 0.7;">
@@ -246,7 +245,17 @@
 
     <script>
                 // 共通モジュールからデータベース接続を引き継ぐ
-        const db = window.db;
+        const firebaseConfig = {
+apiKey: "AIzaSyAlz26igDEILsZBL5LrVVynx6KlsKu6e8U",
+authDomain: "sneezer31-78845.firebaseapp.com",
+projectId: "sneezer31-78845",
+storageBucket: "sneezer31-78845.firebasestorage.app",
+messagingSenderId: "1094107940035",
+appId: "1:1094107940035:web:2f5cfbcccf313feac7ce76"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+db.settings({ experimentalForceLongPolling: true });
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -399,12 +408,12 @@
         async function purgeCodeFromLog(rawTextToReplace) {
             var purged = false;
             for (var i = chatLogArray.length - 1; i >= 0; i--) {
-                if (chatLogArray[i].sender === "kanae" && chatLogArray[i].text.includes(rawTextToReplace)) {
+                if (chatLogArray[i].crew === "かなえ" && chatLogArray[i].text.includes(rawTextToReplace)) {
                     chatLogArray[i].text = chatLogArray[i].text.replace(rawTextToReplace, "\n[※このコードは船長によって郵便受けから抽出・パージされました]\n");
                     chatLogArray[i].updated_at = Date.now();
                     
                     // Firebaseも更新
-                    await db.collection("records").doc(chatLogArray[i].id.toString()).update({
+                    await db.collection("chats").doc(chatLogArray[i].id.toString()).update({
                         text: chatLogArray[i].text,
                         updated_at: chatLogArray[i].updated_at
                     });
@@ -625,15 +634,16 @@
 
             // ▼パッチ適用: APIペイロード作成を画面表示中の現役ログから抽出
             var sendLogs = chatLogArray.slice();
-            while (sendLogs.length > 0 && sendLogs[0].sender !== "User") { sendLogs.shift(); }
-            if (sendLogs.length === 0) return null;
+            while (sendLogs.length > 0 && sendLogs[0].crew !== "船長") { sendLogs.shift(); }
+if (sendLogs.length === 0) return null;
 
             var allContents = [];
-            sendLogs.forEach(function(log) {
-                var role = log.sender === "User" ? "user" : "model";
-                var parts = [{ text: log.text }];
-                
-                if (log.attachedFiles && log.attachedFiles.length > 0) {
+sendLogs.forEach(function(log) {
+var allContents = [];
+sendLogs.forEach(function(log) {
+var role = log.crew === "船長" ? "user" : "model";
+var parts = [{ text: log.text }];
+​if (log.attachedFiles && log.attachedFiles.length > 0) {
                     log.attachedFiles.forEach(function(f) {
                         parts.push({ text: "\n\n[参照ファイル: " + f.name + "]\n" + f.content });
                     });
@@ -731,10 +741,10 @@
         }
 
         function buildLogElement(log, index) {
-            var wrapper = document.createElement("div"); wrapper.className = log.sender === "User" ? "log-user" : "log-ai";
-            var meta = document.createElement("div"); meta.className = "log-meta";
-            var cb = document.createElement("input"); cb.type = "checkbox"; cb.className = "log-checkbox"; cb.value = index; meta.appendChild(cb);
-            var span = document.createElement("span"); span.innerHTML = (log.time || "") + (log.sender === "User" ? " 船長：" : " かなえ："); meta.appendChild(span);
+var wrapper = document.createElement("div"); wrapper.className = log.crew === "船長" ? "log-user" : "log-ai";
+var meta = document.createElement("div"); meta.className = "log-meta";
+var cb = document.createElement("input"); cb.type = "checkbox"; cb.className = "log-checkbox"; cb.value = index; meta.appendChild(cb);
+var span = document.createElement("span"); span.innerHTML = (log.time || "") + " " + log.crew + "："; meta.appendChild(span);
             var textNode = document.createElement("div"); textNode.style.whiteSpace = "pre-wrap"; textNode.textContent = log.text;
             
             if (log.attachedFiles && log.attachedFiles.length > 0) {
@@ -800,32 +810,15 @@
             } catch(e) { console.error("メモ読込エラー", e); }
 
             try {
-    // ① 面倒な設定不要。単純に「ID（時間）が新しい順に最新100件」だけダウンロードする
-// 【追加するコード（完全版）】
-// 1. ローカルからゼロ秒で読み込み、最新100件だけを切り出して即座に画面へ反映
-var localData = await IncredibleEngine.getAll();
-var allChats = localData.filter(d => d.app_type === "chat" && d.status === "published");
-
-// 新しい順（降順）に並び替えてから、最新の100件だけを切り出し、最後に表示用の時系列（昇順）に戻す
-allChats.sort((a, b) => b.id - a.id);
-chatLogArray = allChats.slice(0, 100).reverse();
-
-renderLogs(); 
-
-// 2. 画面展開後、裏側でクラウドと差分同期（バトンリレーの受け取り）
-IncredibleEngine.forceSync().then(async (result) => {
-    if (result.pulled > 0) {
-        var updatedData = await IncredibleEngine.getAll();
-        var updatedChats = updatedData.filter(d => d.app_type === "chat" && d.status === "published");
-        
-        updatedChats.sort((a, b) => b.id - a.id);
-        chatLogArray = updatedChats.slice(0, 100).reverse();
-        
-        renderLogs();
-    }
-}).catch(e => console.warn("起動時バックグラウンド同期保留:", e));
-
-
+var chatSnap = await db.collection("chats")
+.orderBy("id", "desc")
+.limit(100)
+.get();
+chatLogArray = [];
+chatSnap.forEach(doc => {
+chatLogArray.push(doc.data());
+});
+chatLogArray.sort((a, b) => a.id - b.id);
 } catch(e) { 
     console.error("チャット読込エラー", e); 
 }
@@ -837,12 +830,11 @@ IncredibleEngine.forceSync().then(async (result) => {
             setInterval(updateCacheUI, 1000); updateCacheUI();}
 
         document.getElementById("copy-checked-btn").onclick = function() {
-            var checked = Array.from(document.querySelectorAll(".log-checkbox:checked")); if(!checked.length) return;
-            var copyText = checked.map(cb => {
-                var log = chatLogArray[cb.value];
-                var senderName = log.sender === "User" ? "船長：" : "かなえ：";
-                return (log.time ? "【" + log.time + "】 " : "") + senderName + "\n" + log.text;
-            }).join("\n\n---\n");
+var checked = Array.from(document.querySelectorAll(".log-checkbox:checked")); if(!checked.length) return;
+var copyText = checked.map(cb => {
+var log = chatLogArray[cb.value];
+return (log.time ? "【" + log.time + "】 " : "") + log.crew + "：\n" + log.text;
+}).join("\n\n---\n");
             navigator.clipboard.writeText(copyText).then(() => { alert(checked.length + "件の歴史をコピーしました。"); closeAllSidebars(); });
         };
         
@@ -854,7 +846,7 @@ IncredibleEngine.forceSync().then(async (result) => {
                 var batch = db.batch();
                 checked.forEach(cb => {
                     var log = chatLogArray[parseInt(cb.value, 10)];
-                    var ref = db.collection("records").doc(log.id.toString());
+                    var ref = db.collection("chats").doc(log.id.toString());
                     batch.delete(ref);
                 });
                 await batch.commit();
@@ -874,19 +866,7 @@ IncredibleEngine.forceSync().then(async (result) => {
         document.getElementById("save-key-btn").onclick = function() { var key = document.getElementById("api-key-input").value; if (key && key !== "********") { localStorage.setItem(API_KEY_VAULT, key); document.getElementById("api-key-input").value = "********"; alert("保存完了"); } };
         document.getElementById("delete-key-btn").onclick = function() { localStorage.removeItem(API_KEY_VAULT); document.getElementById("api-key-input").value = ""; alert("消去完了"); };
 
-        // ▼パッチ適用: 全消去もFirebaseから物理削除
-        document.getElementById("reset-btn").onclick = async function() {
-            if (confirm("金庫を完全に空にし、画面上の全ログをFirebaseからも物理削除しますか？")) { 
-                var batch = db.batch();
-                chatLogArray.forEach(log => {
-                    batch.delete(db.collection("records").doc(log.id.toString()));
-                });
-                await batch.commit();
-                
-                chatLogArray = []; sessionWaltzCount = 0; localStorage.setItem(WALTZ_COUNT_VAULT, 0); 
-                timeHistory = []; renderTimers(); renderLogs(); closeAllSidebars(); 
-            }
-        };
+        
 
         // ▼パッチ適用: 送受信時にFirebaseに統合スキーマで直接保存
         sendBtn.onclick = async function() {
@@ -906,24 +886,14 @@ IncredibleEngine.forceSync().then(async (result) => {
                 ]);
                 
                 var nowNum = Date.now();
-                var userLog = { 
-                    id: nowNum,
-                    app_type: "chat",
-                    sender: "User", 
-                    time: getFormattedTime(), 
-                    text: text || "（ファイルのみ送信）", 
-                    attachedFiles: currentFiles || [],
-                    tags: [],
-                    linked_ids: [],
-                    status: "published",
-                    created_at: nowNum,
-                    updated_at: nowNum
-                };
-                
-                chatLogArray.push(userLog); 
-                appendLogElement(chatLogArray.length - 1);
-                await IncredibleEngine.saveLocal(userLog);
-IncredibleEngine.forceSync().catch(e => console.warn("バックグラウンド同期保留:", e)); // 待たずに裏で投げる
+                var userLog = {
+id: nowNum,
+crew: "船長",
+time: getFormattedTime(),
+text: text || "（ファイルのみ送信）",
+attachedFiles: currentFiles || [],
+updated_at: nowNum
+await db.collection("chats").doc(nowNum.toString()).set(userLog);
 
                 if (currentFiles) { clearPostedFiles(); }
 
@@ -935,26 +905,19 @@ IncredibleEngine.forceSync().catch(e => console.warn("バックグラウンド�
 
                 if (aiResponseText !== null) {
                     var aiNum = Date.now();
-                    var aiLog = { 
-                        id: aiNum,
-                        app_type: "chat",
-                        sender: "kanae", 
-                        time: getFormattedTime(), 
-                        text: aiResponseText, 
-                        attachedFiles: [],
-                        tags: [],
-                        linked_ids: [],
-                        status: "published",
-                        created_at: aiNum,
-                        updated_at: aiNum
-                    };
-                    
-                    chatLogArray.push(aiLog);
-                    sessionWaltzCount++; localStorage.setItem(WALTZ_COUNT_VAULT, sessionWaltzCount);
-                    appendLogElement(chatLogArray.length - 1);
-                    updateMailbox(aiResponseText);
-                    await IncredibleEngine.saveLocal(aiLog);
-IncredibleEngine.forceSync().catch(e => console.warn("バックグラウンド同期保留:", e)); // 待たずに裏で投げる
+                    var aiLog = {
+id: aiNum,
+crew: "かなえ",
+time: getFormattedTime(),
+text: aiResponseText,
+attachedFiles: [],
+updated_at: aiNum
+};
+chatLogArray.push(aiLog);
+sessionWaltzCount++; localStorage.setItem(WALTZ_COUNT_VAULT, sessionWaltzCount);
+appendLogElement(chatLogArray.length - 1);
+updateMailbox(aiResponseText);
+await db.collection("chats").doc(aiNum.toString()).set(aiLog);
                 }
 
                 var lenBefore = chatLogArray.length;
