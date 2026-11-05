@@ -73,14 +73,19 @@ const IncredibleEngine = (() => {
         const allLocal = await getAll();
         const localDiff = allLocal.filter(d => (d.updatedAt || d.id || 0) > lastSyncTime);
 
-        // 2. クラウド（Firestore）から「前回同期以降に変更されたデータ」だけを抽出
+               // 2. クラウド（Firestore）から「前回同期以降に変更されたデータ」だけを抽出
         const cloudMap = new Map();
         let query = window.db.collection(STORE_NAME);
         if (lastSyncTime > 0) {
             query = query.where('updatedAt', '>', lastSyncTime);
         }
         const snap = await query.get();
-        snap.forEach(doc => cloudMap.set(String(doc.id), doc.data()));
+        snap.forEach(doc => {
+            const data = doc.data();
+            data.id = doc.id; // 【追加】外箱のIDを中身にも強制的に持たせる
+            cloudMap.set(String(doc.id), data);
+        });
+
 
         let pushed = 0, pulled = 0;
         const pushedIds = new Set();
