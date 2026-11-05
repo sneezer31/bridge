@@ -54,7 +54,7 @@
             
             // クラウドデータの取得 (ミリ秒IDの降順で最新20件)
             try {
-                const snap = await window.db.collection('records').orderBy('id', 'desc').limit(20).get();
+                const snap = await window.db.collection('records').limit(20).get();
                 let cloudHtml = '';
                 snap.forEach(doc => { cloudHtml += `<div class="json-block">${JSON.stringify(doc.data(), null, 2)}</div>`; });
                 cloudView.innerHTML = cloudHtml || 'データなし';
