@@ -1,56 +1,19 @@
-// sw.js - マスター・サービスワーカー
-const CACHE_NAME = 'hub-cache-v1';
-
-// キャッシュする統合ファイルのリスト（フラット配置）
-const urlsToCache = [
-  './',
-  './index.html',
-  './manifest.json',
-  './incredible.js',
-  './firebase-config.js',
-  './argus.html',
-  './saikiyo.html',
-  './tanzaku.html',
-  './rensaku.html',
-  './ifrit18.html',
-  './ifrit19.html',
-  './ifrit20.html',
-  './alex.html'
-];
-
-// インストール時に全ファイルをキャッシュへ格納
+// sw.js - 完全消去用キルスイッチ
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
-  );
+  // 待機状態をスキップし、即座にこの自爆用Service Workerを起動させる
   self.skipWaiting();
 });
 
-// 古いキャッシュの破棄
 self.addEventListener('activate', event => {
   event.waitUntil(
+    // 端末内のすべてのキャッシュを物理削除
     caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames.map(cache => {
-          if (cache !== CACHE_NAME) return caches.delete(cache);
-        })
+        cacheNames.map(cache => caches.delete(cache))
       );
-    })
-  );
-  self.clients.claim();
-});
-
-// ネットワーク・ファースト戦略（Firebase通信はスルー）
-self.addEventListener('fetch', event => {
-  // FirestoreのAPI通信はキャッシュせず、直接ネットワークへ流す
-  if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('identitytoolkit.googleapis.com')) {
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request).catch(() => {
-      // オフライン時のみキャッシュを返す
-      return caches.match(event.request);
+    }).then(() => {
+      // 自身のシステム登録を解除（アンインストール）し、完全に消滅する
+      return self.registration.unregister();
     })
   );
 });
