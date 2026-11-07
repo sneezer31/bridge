@@ -259,11 +259,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 db.settings({ experimentalForceLongPolling: true });
 
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for (let registration of registrations) { registration.unregister(); }
-            });
-        }
+        
 
         if (window.visualViewport) {
             function updateBodyHeight() { document.body.style.height = window.visualViewport.height + "px"; window.scrollTo(0, 0); }

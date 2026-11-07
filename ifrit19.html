@@ -257,12 +257,7 @@
         window.addEventListener("orientationchange", function() { setTimeout(placeEruda, 300); });
     </script>
     <script>   
-    if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for (let registration of registrations) { registration.unregister(); }
-            });
-        }
-
+    
         if (window.visualViewport) {
             function updateBodyHeight() { document.body.style.height = window.visualViewport.height + "px"; window.scrollTo(0, 0); }
             window.visualViewport.addEventListener("resize", function() {
@@ -1327,11 +1322,12 @@
             if (e.key === 'Enter') executeGlobalSearch();
         });
     </script>
-  <!-- アプリのHTMLにこれを書き足すだけ -->
+    <!-- アプリのHTMLにこれを書き足すだけ -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="incredible.js"></script>
+
 
 </body>
 </html>

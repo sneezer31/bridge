@@ -6,7 +6,7 @@
     <title>イフリート20号（自律母艦仕様・メモコンソール搭載）</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2c3e50">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
 
     <link rel="apple-touch-icon" href="icon-192.png">
     
@@ -15,7 +15,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
   
   
-
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { height: 100%; overflow: hidden; overflow-x: hidden}
@@ -95,9 +94,12 @@
    
         @media (max-width: 600px) {
     /* ログ表示部、入力部、コントロール部の左右余白を10pxから16pxに拡大 */
-    #log-window {
-        padding: 16px 16px !important;
-    }
+  #log-window {
+    flex: 1; background-color: #ffffff; padding: 15px 10px;
+    overflow-y: auto; overflow-x: hidden; word-break: break-word; /* この2つを追加 */
+    border-bottom: 2px solid #bdc3c7; -webkit-user-select: text; user-select: text;
+}
+
     #input-window {
     min-height: 50px; /* 元の 70px から変更（または auto にする） */
     padding: 6px 10px; /* 元の 10px から、上下を6pxに縮小 */
@@ -257,11 +259,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 db.settings({ experimentalForceLongPolling: true });
 
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for (let registration of registrations) { registration.unregister(); }
-            });
-        }
+       
 
         if (window.visualViewport) {
             function updateBodyHeight() { document.body.style.height = window.visualViewport.height + "px"; window.scrollTo(0, 0); }
