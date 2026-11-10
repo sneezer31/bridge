@@ -6,14 +6,12 @@
     <title>イフリート20号（自律母艦仕様・メモコンソール搭載）</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2c3e50">
-  
 
     <link rel="apple-touch-icon" href="icon-192.png">
     
     <!-- Firebase v9 compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-  
   
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -96,13 +94,13 @@
     /* ログ表示部、入力部、コントロール部の左右余白を10pxから16pxに拡大 */
   #log-window {
     flex: 1; background-color: #ffffff; padding: 15px 10px;
-    overflow-y: auto; overflow-x: hidden; word-break: break-word; /* この2つを追加 */
+    overflow-y: auto; overflow-x: hidden; word-break: break-word;
     border-bottom: 2px solid #bdc3c7; -webkit-user-select: text; user-select: text;
 }
 
     #input-window {
-    min-height: 50px; /* 元の 70px から変更（または auto にする） */
-    padding: 6px 10px; /* 元の 10px から、上下を6pxに縮小 */
+    min-height: 50px; 
+    padding: 6px 10px; 
 }
     #control-area {
         padding: 0 15px 15px 16px;
@@ -162,11 +160,10 @@
             <div class="console-title">ログ管理</div>
             <button class="btn-warning" id="copy-checked-btn">チェック項目をコピー</button>
             <button class="btn-warning" id="delete-checked-btn">チェック項目を削除</button>
-            
         </div>
         
         <div style="margin-top: auto; padding-top: 15px; text-align: center; color: #ecf0f1; font-size: 11px; font-weight: normal; opacity: 0.7;">
-            Firebaseマスターコンソール 20号
+            イフリート21号 (2026/11/10 稼働版)
         </div>
     </div>
 
@@ -246,20 +243,17 @@
     </div>
 
     <script>
-                // 共通モジュールからデータベース接続を引き継ぐ
         const firebaseConfig = {
-apiKey: "AIzaSyAlz26igDEILsZBL5LrVVynx6KlsKu6e8U",
-authDomain: "sneezer31-78845.firebaseapp.com",
-projectId: "sneezer31-78845",
-storageBucket: "sneezer31-78845.firebasestorage.app",
-messagingSenderId: "1094107940035",
-appId: "1:1094107940035:web:2f5cfbcccf313feac7ce76"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-db.settings({ experimentalForceLongPolling: true });
-
-        
+            apiKey: "AIzaSyAlz26igDEILsZBL5LrVVynx6KlsKu6e8U",
+            authDomain: "sneezer31-78845.firebaseapp.com",
+            projectId: "sneezer31-78845",
+            storageBucket: "sneezer31-78845.firebasestorage.app",
+            messagingSenderId: "1094107940035",
+            appId: "1:1094107940035:web:2f5cfbcccf313feac7ce76"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        db.settings({ experimentalForceLongPolling: true });
 
         if (window.visualViewport) {
             function updateBodyHeight() { document.body.style.height = window.visualViewport.height + "px"; window.scrollTo(0, 0); }
@@ -406,15 +400,23 @@ db.settings({ experimentalForceLongPolling: true });
         async function purgeCodeFromLog(rawTextToReplace) {
             var purged = false;
             for (var i = chatLogArray.length - 1; i >= 0; i--) {
-                if (chatLogArray[i].crew === "かなえ" && chatLogArray[i].text.includes(rawTextToReplace)) {
-                    chatLogArray[i].text = chatLogArray[i].text.replace(rawTextToReplace, "\n[※このコードは船長によって郵便受けから抽出・パージされました]\n");
-                    chatLogArray[i].updated_at = Date.now();
+                var targetText = chatLogArray[i].content !== undefined ? chatLogArray[i].content : chatLogArray[i].text;
+                if (chatLogArray[i].crew === "かなえ" && targetText && targetText.includes(rawTextToReplace)) {
+                    var newText = targetText.replace(rawTextToReplace, "\n[※このコードは船長によって郵便受けから抽出・パージされました]\n");
                     
-                    // Firebaseも更新
-                    await db.collection("chats").doc(chatLogArray[i].id.toString()).update({
-                        text: chatLogArray[i].text,
-                        updated_at: chatLogArray[i].updated_at
-                    });
+                    if (chatLogArray[i].content !== undefined) {
+                        chatLogArray[i].content = newText;
+                        await db.collection("chats").doc(chatLogArray[i].id.toString()).update({
+                            content: newText
+                        });
+                    } else {
+                        chatLogArray[i].text = newText;
+                        chatLogArray[i].updated_at = Date.now();
+                        await db.collection("chats").doc(chatLogArray[i].id.toString()).update({
+                            text: newText,
+                            updated_at: chatLogArray[i].updated_at
+                        });
+                    }
                     purged = true;
                     break; 
                 }
@@ -466,7 +468,6 @@ db.settings({ experimentalForceLongPolling: true });
             }
         });
 
-        // ▼パッチ適用: プロンプト保存をFirebase直結に変更
         document.querySelectorAll('.btn-action-save').forEach(function(btn) {
             if (btn.id === 'btn-transfer-memo' || btn.id === 'btn-save-memo') return;
             btn.onclick = async function() {
@@ -562,7 +563,6 @@ db.settings({ experimentalForceLongPolling: true });
             }
         };
 
-        // ▼パッチ適用: メモの保存もFirebase直結
         async function saveMemosToStorage() { 
             await db.collection("records").doc("memo_master").set({
                 id: "memo_master",
@@ -582,17 +582,38 @@ db.settings({ experimentalForceLongPolling: true });
             return yyyy + "/" + mm + "/" + dd + "(" + dayStr + ") " + hh + ":" + min;
         }
 
+        // ▼時間復元関数（旧データとの互換性・新規データの表示用）
+        function getRestoredTime(id) {
+            var date = new Date(id); 
+            var dayStr = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+            var yyyy = date.getFullYear(); 
+            var mm = ("0" + (date.getMonth() + 1)).slice(-2); 
+            var dd = ("0" + date.getDate()).slice(-2);
+            var hh = ("0" + date.getHours()).slice(-2); 
+            var min = ("0" + date.getMinutes()).slice(-2);
+            return yyyy + "/" + mm + "/" + dd + "(" + dayStr + ") " + hh + ":" + min;
+        }
+
         function updateRadar() {
-            var totalChars = chatLogArray.reduce((acc, log) => acc + log.text.length, 0);
+            var totalChars = chatLogArray.reduce((acc, log) => {
+                var txt = log.content !== undefined ? log.content : (log.text || "");
+                return acc + txt.length;
+            }, 0);
             document.getElementById("radar-waltz").innerText = sessionWaltzCount;
             document.getElementById("radar-chars").innerText = totalChars.toLocaleString();
         }
 
         function enforceMemoryLimit() {
             var STORAGE_LIMIT = 2000000;
-            var totalChars = chatLogArray.reduce((acc, log) => acc + log.text.length, 0);
+            var totalChars = chatLogArray.reduce((acc, log) => {
+                var txt = log.content !== undefined ? log.content : (log.text || "");
+                return acc + txt.length;
+            }, 0);
             while (totalChars > STORAGE_LIMIT && chatLogArray.length >= 2) {
-                var dropped1 = chatLogArray.shift(); var dropped2 = chatLogArray.shift(); totalChars -= (dropped1.text.length + dropped2.text.length);
+                var dropped1 = chatLogArray.shift(); var dropped2 = chatLogArray.shift(); 
+                var txt1 = dropped1.content !== undefined ? dropped1.content : (dropped1.text || "");
+                var txt2 = dropped2.content !== undefined ? dropped2.content : (dropped2.text || "");
+                totalChars -= (txt1.length + txt2.length);
             }
         }
 
@@ -627,32 +648,36 @@ db.settings({ experimentalForceLongPolling: true });
             }
         }
 
-        async function fetchGeminiAPI(isAutoRetry = false) {
+        async function fetchGeminiAPI(currentFiles = null, isAutoRetry = false) {
             var apiKey = localStorage.getItem(API_KEY_VAULT); if (!apiKey) { alert("APIキーがありません。"); return null; }
 
-            // ▼パッチ適用: APIペイロード作成を画面表示中の現役ログから抽出
             var sendLogs = chatLogArray.slice();
-while (sendLogs.length > 0 && sendLogs[0].crew !== "船長") { sendLogs.shift(); }
-if (sendLogs.length === 0) return null;
+            while (sendLogs.length > 0 && sendLogs[0].crew !== "船長") { sendLogs.shift(); }
+            if (sendLogs.length === 0) return null;
 
-var allContents = [];
-sendLogs.forEach(function(log) {
-    var role = log.crew === "船長" ? "user" : "model";
-    var parts = [{ text: log.text }];
-    
-    if (log.attachedFiles && log.attachedFiles.length > 0) {
-        log.attachedFiles.forEach(function(f) {
-            parts.push({ text: "\n\n[参照ファイル: " + f.name + "]\n" + f.content });
-        });
-    }
+            var allContents = [];
+            sendLogs.forEach(function(log) {
+                var role = log.crew === "船長" ? "user" : "model";
+                var txt = log.content !== undefined ? log.content : log.text;
+                var parts = [{ text: txt }];
+                
+                var lastContent = allContents[allContents.length - 1];
+                if (lastContent && lastContent.role === role) { 
+                    lastContent.parts = lastContent.parts.concat(parts);
+                } else { 
+                    allContents.push({ role: role, parts: parts }); 
+                }
+            });
 
-    var lastContent = allContents[allContents.length - 1];
-    if (lastContent && lastContent.role === role) { 
-        lastContent.parts = lastContent.parts.concat(parts);
-    } else { 
-        allContents.push({ role: role, parts: parts }); 
-    }
-});
+            // DBから消えた生データを、送信の直前だけ動的にくっつける
+            if (currentFiles && currentFiles.length > 0) {
+                var lastIdx = allContents.length - 1;
+                if (lastIdx >= 0 && allContents[lastIdx].role === "user") {
+                    currentFiles.forEach(function(f) {
+                        allContents[lastIdx].parts.push({ text: "\n\n[参照ファイル: " + f.name + "]\n" + f.content });
+                    });
+                }
+            }
 
             var sysPrompt = document.getElementById("sys-prompt").value || "";
             var savedInfo = document.getElementById("saved-info").value || "";
@@ -712,7 +737,7 @@ sendLogs.forEach(function(log) {
                 if (data.error) {
                     if (activeCacheName && !isAutoRetry && (data.error.message.includes("unavailable") || data.error.message.includes("cache") || data.error.message.includes("not found"))) {
                         console.warn("【システム監視】サーバー側のキャッシュ消失を検知。フル送信で自律リトライを実行します。");
-                        activeCacheName = null; updateCacheUI(); return await fetchGeminiAPI(true);
+                        activeCacheName = null; updateCacheUI(); return await fetchGeminiAPI(currentFiles, true);
                     }
                     alert("APIからの拒否理由: " + data.error.message); return null; 
                 }
@@ -738,11 +763,15 @@ sendLogs.forEach(function(log) {
         }
 
         function buildLogElement(log, index) {
-var wrapper = document.createElement("div"); wrapper.className = log.crew === "船長" ? "log-user" : "log-ai";
-var meta = document.createElement("div"); meta.className = "log-meta";
-var cb = document.createElement("input"); cb.type = "checkbox"; cb.className = "log-checkbox"; cb.value = index; meta.appendChild(cb);
-var span = document.createElement("span"); span.innerHTML = (log.time || "") + " " + log.crew + "："; meta.appendChild(span);
-            var textNode = document.createElement("div"); textNode.style.whiteSpace = "pre-wrap"; textNode.textContent = log.text;
+            var wrapper = document.createElement("div"); wrapper.className = log.crew === "船長" ? "log-user" : "log-ai";
+            var meta = document.createElement("div"); meta.className = "log-meta";
+            var cb = document.createElement("input"); cb.type = "checkbox"; cb.className = "log-checkbox"; cb.value = index; meta.appendChild(cb);
+            
+            var displayTime = log.time || getRestoredTime(log.id);
+            var span = document.createElement("span"); span.innerHTML = displayTime + " " + log.crew + "："; meta.appendChild(span);
+            
+            var displayContent = log.content !== undefined ? log.content : log.text;
+            var textNode = document.createElement("div"); textNode.style.whiteSpace = "pre-wrap"; textNode.textContent = displayContent;
             
             if (log.attachedFiles && log.attachedFiles.length > 0) {
                 var attachDiv = document.createElement("div");
@@ -776,7 +805,6 @@ var span = document.createElement("span"); span.innerHTML = (log.time || "") + "
             logArea.scrollTop = logArea.scrollHeight; updateRadar();
         }
 
-        // ▼パッチ適用: 起動時にFirebaseからデータを読み込む
         window.onload = async function() {
             var savedTokens = localStorage.getItem(TOKEN_VAULT); if (savedTokens) totalOutputTokens = parseInt(savedTokens);
             var savedInTokens = localStorage.getItem(INPUT_TOKEN_VAULT); if (savedInTokens) totalInputTokens = parseInt(savedInTokens);
@@ -807,35 +835,36 @@ var span = document.createElement("span"); span.innerHTML = (log.time || "") + "
             } catch(e) { console.error("メモ読込エラー", e); }
 
             try {
-var chatSnap = await db.collection("chats")
-.orderBy("id", "desc")
-.limit(100)
-.get();
-chatLogArray = [];
-chatSnap.forEach(doc => {
-chatLogArray.push(doc.data());
-});
-chatLogArray.sort((a, b) => a.id - b.id);
-} catch(e) { 
-    console.error("チャット読込エラー", e); 
-}
-
+                var chatSnap = await db.collection("chats")
+                .orderBy("id", "desc")
+                .limit(100)
+                .get();
+                chatLogArray = [];
+                chatSnap.forEach(doc => {
+                    chatLogArray.push(doc.data());
+                });
+                chatLogArray.sort((a, b) => a.id - b.id);
+            } catch(e) { 
+                console.error("チャット読込エラー", e); 
+            }
 
             renderLogs(); renderTimers();
             if (localStorage.getItem(API_KEY_VAULT)) document.getElementById("api-key-input").value = "********"; 
             
-            setInterval(updateCacheUI, 1000); updateCacheUI();}
+            setInterval(updateCacheUI, 1000); updateCacheUI();
+        }
 
         document.getElementById("copy-checked-btn").onclick = function() {
-var checked = Array.from(document.querySelectorAll(".log-checkbox:checked")); if(!checked.length) return;
-var copyText = checked.map(cb => {
-var log = chatLogArray[cb.value];
-return (log.time ? "【" + log.time + "】 " : "") + log.crew + "：\n" + log.text;
-}).join("\n\n---\n");
+            var checked = Array.from(document.querySelectorAll(".log-checkbox:checked")); if(!checked.length) return;
+            var copyText = checked.map(cb => {
+                var log = chatLogArray[cb.value];
+                var displayTime = log.time || getRestoredTime(log.id);
+                var txt = log.content !== undefined ? log.content : (log.text || "");
+                return "【" + displayTime + "】 " + log.crew + "：\n" + txt;
+            }).join("\n\n---\n");
             navigator.clipboard.writeText(copyText).then(() => { alert(checked.length + "件の歴史をコピーしました。"); closeAllSidebars(); });
         };
         
-        // ▼パッチ適用: チェック削除はFirebase上から物理削除
         document.getElementById("delete-checked-btn").onclick = async function() {
             var checked = Array.from(document.querySelectorAll(".log-checkbox:checked")); if (!checked.length) return;
             if (confirm(checked.length + "件の歴史を物理削除しますか？\n（Firebase上からも完全に消去されます）")) {
@@ -863,9 +892,6 @@ return (log.time ? "【" + log.time + "】 " : "") + log.crew + "：\n" + log.te
         document.getElementById("save-key-btn").onclick = function() { var key = document.getElementById("api-key-input").value; if (key && key !== "********") { localStorage.setItem(API_KEY_VAULT, key); document.getElementById("api-key-input").value = "********"; alert("保存完了"); } };
         document.getElementById("delete-key-btn").onclick = function() { localStorage.removeItem(API_KEY_VAULT); document.getElementById("api-key-input").value = ""; alert("消去完了"); };
 
-        
-
-        // ▼パッチ適用: 送受信時にFirebaseに統合スキーマで直接保存
         sendBtn.onclick = async function() {
             var text = inputArea.value;
             var currentFiles = postedFiles.length > 0 ? postedFiles.slice() : null; 
@@ -883,43 +909,46 @@ return (log.time ? "【" + log.time + "】 " : "") + log.crew + "：\n" + log.te
                 ]);
                 
                 var nowNum = Date.now();
-var userLog = { 
-    id: nowNum,
-    crew: "船長", 
-    time: getFormattedTime(), 
-    text: text || "（ファイルのみ送信）", 
-    attachedFiles: currentFiles || [],
-    updated_at: nowNum
-};
+                
+                // 【DB保存用データの軽量化】ファイル名のみ抽出。生データはパージ
+                var dbFiles = currentFiles ? currentFiles.map(f => ({ name: f.name })) : [];
 
-chatLogArray.push(userLog); 
-appendLogElement(chatLogArray.length - 1);
-await db.collection("chats").doc(nowNum.toString()).set(userLog);
+                // スキーマの浄化：timeとupdated_atを削除し、textをcontentへリネーム
+                var userLog = { 
+                    id: nowNum,
+                    crew: "船長", 
+                    content: text || "（ファイルのみ送信）", 
+                    attachedFiles: dbFiles
+                };
 
+                chatLogArray.push(userLog); 
+                appendLogElement(chatLogArray.length - 1);
+                await db.collection("chats").doc(nowNum.toString()).set(userLog);
 
+                // UIの投函リストをクリア
                 if (currentFiles) { clearPostedFiles(); }
-
                 setTimeout(() => { inputArea.value = ""; }, 10);
 
-                var aiResponseText = await fetchGeminiAPI();
+                // APIには生データを含んだ currentFiles を渡す
+                var aiResponseText = await fetchGeminiAPI(currentFiles);
+
                 clearInterval(timerInterval);
                 timeHistory.push(((performance.now() - startTime) / 1000).toFixed(1) + "秒"); if (timeHistory.length > 1) timeHistory.shift(); renderTimers();
 
                 if (aiResponseText !== null) {
                     var aiNum = Date.now();
+                    // AI側のログも同様に軽量化
                     var aiLog = {
-id: aiNum,
-crew: "かなえ",
-time: getFormattedTime(),
-text: aiResponseText,
-attachedFiles: [],
-updated_at: aiNum
-};
-chatLogArray.push(aiLog);
-sessionWaltzCount++; localStorage.setItem(WALTZ_COUNT_VAULT, sessionWaltzCount);
-appendLogElement(chatLogArray.length - 1);
-updateMailbox(aiResponseText);
-await db.collection("chats").doc(aiNum.toString()).set(aiLog);
+                        id: aiNum,
+                        crew: "かなえ",
+                        content: aiResponseText,
+                        attachedFiles: []
+                    };
+                    chatLogArray.push(aiLog);
+                    sessionWaltzCount++; localStorage.setItem(WALTZ_COUNT_VAULT, sessionWaltzCount);
+                    appendLogElement(chatLogArray.length - 1);
+                    updateMailbox(aiResponseText);
+                    await db.collection("chats").doc(aiNum.toString()).set(aiLog);
                 }
 
                 var lenBefore = chatLogArray.length;
@@ -930,7 +959,5 @@ await db.collection("chats").doc(aiNum.toString()).set(aiLog);
             }
         };
     </script>
-
-
 </body>
 </html>
