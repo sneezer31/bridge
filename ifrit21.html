@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>イフリート20号（自律母艦仕様・メモコンソール搭載）</title>
+    <title>イフリート21号（自律母艦仕様・メモコンソール搭載）</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2c3e50">
-
     <link rel="apple-touch-icon" href="icon-192.png">
     
     <!-- Firebase v9 compat SDKs -->
@@ -26,17 +25,11 @@
         .log-user, .log-ai { font-family: "MS UI Gothic", "Yu Gothic UI", "Meiryo UI", sans-serif; font-size: 16px; line-height: 1.6; -webkit-user-select: text; user-select: text; }
         .log-meta { font-size: 12px; color: #737373; margin-bottom: 20px; font-family: sans-serif; display: flex; align-items: center; gap: 5px; -webkit-user-select: none; user-select: none; }
         .log-checkbox { width: 14px; height: 14px; cursor: pointer; }
-      /* 対話ブロックの構造的グループ化 */
-.log-user, .log-ai {
-    padding-bottom: 0 !important; /* 内部の不要な空行を完全排除 */
-    margin-bottom: 40px !important; /* 次の発言ブロックとの間に明確な断絶を確保 */
-}
+      
+        /* 対話ブロックの構造的グループ化 */
+        .log-user, .log-ai { padding-bottom: 0 !important; margin-bottom: 40px !important; }
+        .log-meta { margin-bottom: 10px !important; }
 
-.log-meta {
-    margin-bottom: 10px !important; /* メタデータと「自身の発言本文」を視覚的に接着 */
-}
-
-        
         #input-window { min-height: 70px; flex: none; padding: 10px; background-color: #ecf0f1; display: flex; flex-direction: column; border-top: 1px solid #bdc3c7; }
         textarea#main-input { flex-grow: 1; resize: none; padding: 10px; font-size: 16px; border: 1px solid #95a5a6; border-radius: 5px; color: #595959; outline: none; transition: border-color 0.2s, box-shadow 0.2s; overflow-y: hidden; line-height: 1.5; }
         textarea#main-input:focus { border-color: #2e648c; box-shadow: 0 0 0 2px rgba(46, 100, 140, 0.2); }
@@ -91,26 +84,14 @@
         #btn-eruda { background: #34495e; border: 1px solid #bdc3c7; color: #bdc3c7; padding: 2px 8px; font-size: 10px; border-radius: 4px; cursor: pointer; }
    
         @media (max-width: 600px) {
-    /* ログ表示部、入力部、コントロール部の左右余白を10pxから16pxに拡大 */
-  #log-window {
-    flex: 1; background-color: #ffffff; padding: 15px 10px;
-    overflow-y: auto; overflow-x: hidden; word-break: break-word;
-    border-bottom: 2px solid #bdc3c7; -webkit-user-select: text; user-select: text;
-}
-
-    #input-window {
-    min-height: 50px; 
-    padding: 6px 10px; 
-}
-    #control-area {
-        padding: 0 15px 15px 16px;
-    }
-
-    /* 文字サイズの拡大（X相当） */
-    .log-user, .log-ai, textarea#main-input {
-        font-size: 20px !important;
-        line-height: 1.5 !important;
-    }
+            #log-window {
+                flex: 1; background-color: #ffffff; padding: 15px 10px;
+                overflow-y: auto; overflow-x: hidden; word-break: break-word; 
+                border-bottom: 2px solid #bdc3c7; -webkit-user-select: text; user-select: text;
+            }
+            #input-window { min-height: 50px; padding: 6px 10px; }
+            #control-area { padding: 0 15px 15px 16px; }
+            .log-user, .log-ai, textarea#main-input { font-size: 20px !important; line-height: 1.5 !important; }
         }
     </style>
 </head>
@@ -118,20 +99,18 @@
 
     <div id="sidebar-overlay"></div>
     
-    <!-- 左サイドバー -->
     <div id="sidebar-console">
-        <!-- 物流ポート -->
         <div class="console-section" id="post-office-section">
-            <div class="console-title">物流ポート (ファイル送受信)</div>
-            <button type="button" class="btn-small" style="background:#8e44ad; width:100%; margin-bottom:4px;" onclick="document.getElementById('file-post').click()">📤 ファイルをポストに投函</button>
+            <div class="console-title">物流ポート (永続棚)</div>
+            <button type="button" class="btn-small" style="background:#8e44ad; width:100%; margin-bottom:4px;" onclick="document.getElementById('file-post').click()">📤 ファイルを棚へ投函</button>
             <input type="file" id="file-post" hidden multiple onchange="handleFilePost(event)">
             
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <div style="font-size: 12px; color:#ecf0f1;">投函リスト</div>
+                <div style="font-size: 12px; color:#ecf0f1;">棚の保管リスト（☑でAPIに送信）</div>
                 <button type="button" id="clear-post-btn" style="background: #7f8c8d; color: white; border: none; border-radius: 3px; padding: 2px 6px; font-size: 10px; cursor: pointer;" onclick="clearPostedFiles()">全クリア</button>
             </div>
-            <div id="post-list-container" style="background:#2c3e50; padding:8px; border-radius:4px; min-height:30px; font-size:12px; color:#95a5a6; display:flex; flex-direction:column; gap:4px;">
-                投函待ち...
+            <div id="post-list-container" style="background:#2c3e50; padding:8px; border-radius:4px; min-height:30px; font-size:12px; color:#95a5a6; display:flex; flex-direction:column; gap:6px;">
+                棚は空です...
             </div>
             
             <hr style="border:0; border-top:1px dashed #7f8c8d; margin:12px 0;">
@@ -159,7 +138,7 @@
         <div class="console-section">
             <div class="console-title">ログ管理</div>
             <button class="btn-warning" id="copy-checked-btn">チェック項目をコピー</button>
-            <button class="btn-warning" id="delete-checked-btn">チェック項目を削除</button>
+            <button class="btn-warning" id="delete-checked-btn">チェック項目を物理削除</button>
         </div>
         
         <div style="margin-top: auto; padding-top: 15px; text-align: center; color: #ecf0f1; font-size: 11px; font-weight: normal; opacity: 0.7;">
@@ -167,7 +146,6 @@
         </div>
     </div>
 
-    <!-- 右サイドバー -->
     <div id="right-sidebar">
         <div id="rs-view-main">
             <div class="console-section" style="flex: 1;">
@@ -280,7 +258,21 @@
         var sessionWaltzCount = 0;
         var timeHistory = []; 
         
+        // ▼棚の永続化とチェック状態の読み込み
         var postedFiles = [];
+        try {
+            var savedFiles = localStorage.getItem("ifrit_posted_files");
+            if (savedFiles) postedFiles = JSON.parse(savedFiles);
+        } catch(e) { console.error("棚の読込エラー", e); }
+
+        function savePostedFiles() {
+            try {
+                localStorage.setItem("ifrit_posted_files", JSON.stringify(postedFiles));
+            } catch (e) {
+                alert("ローカルストレージの容量制限に達しました。不要なファイルを削除してください。");
+            }
+        }
+
         var CODE_EXT = { html: "html", js: "js", javascript: "js", css: "css", json: "json", md: "md", markdown: "md", txt: "txt", py: "py", python: "py" };
         
         function extractCodeBlocks(text) { 
@@ -315,27 +307,44 @@
         
         function downloadText(name, content) { var url = URL.createObjectURL(new Blob([content], { type: "text/plain;charset=utf-8" })); var a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function() { URL.revokeObjectURL(url); }, 1000); }
         
+        // ▼棚のUI描画（チェックボックス付き）
         function renderPostList() {
             var container = document.getElementById("post-list-container");
             container.innerHTML = "";
             if (postedFiles.length === 0) {
-                container.innerHTML = "投函待ち...";
+                container.innerHTML = "棚は空です...";
                 return;
             }
             postedFiles.forEach(function(f, index) {
                 var div = document.createElement("div");
-                div.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#34495e; padding:4px 8px; border-radius:3px;";
+                div.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#34495e; padding:4px 8px; border-radius:3px; gap:6px;";
+                
+                var chk = document.createElement("input");
+                chk.type = "checkbox";
+                chk.checked = f.checked !== false; 
+                chk.style.cssText = "flex:none; transform: scale(1.2);";
+                chk.onchange = function() {
+                    postedFiles[index].checked = chk.checked;
+                    savePostedFiles();
+                };
+
                 var nameSpan = document.createElement("span");
-                nameSpan.style.cssText = "white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:85%; color:#f1c40f;";
-                nameSpan.textContent = "📄 " + f.name;
+                nameSpan.style.cssText = "flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#f1c40f; font-size:13px;";
+                nameSpan.textContent = f.name;
+
                 var delBtn = document.createElement("button");
-                delBtn.style.cssText = "background:#c0392b; color:white; border:none; border-radius:3px; width:20px; height:20px; display:flex; justify-content:center; align-items:center; cursor:pointer;";
+                delBtn.style.cssText = "flex:none; background:#c0392b; color:white; border:none; border-radius:3px; width:22px; height:22px; display:flex; justify-content:center; align-items:center; cursor:pointer;";
                 delBtn.textContent = "✖";
-                delBtn.onclick = function() { postedFiles.splice(index, 1); renderPostList(); };
-                div.appendChild(nameSpan); div.appendChild(delBtn); container.appendChild(div);
+                delBtn.onclick = function() { postedFiles.splice(index, 1); savePostedFiles(); renderPostList(); };
+
+                div.appendChild(chk);
+                div.appendChild(nameSpan);
+                div.appendChild(delBtn);
+                container.appendChild(div);
             });
         }
 
+        // ▼ファイルの棚入れ（投函）
         function handleFilePost(e) { 
             var files = e.target.files; 
             if (!files || files.length === 0) return; 
@@ -344,16 +353,20 @@
                 (function(file) {
                     var reader = new FileReader(); 
                     reader.onload = function() { 
-                        postedFiles.push({ name: file.name, content: String(reader.result) }); 
+                        postedFiles.push({ name: file.name, content: String(reader.result), checked: true }); 
                         loadedCount++;
-                        if (loadedCount === files.length) { renderPostList(); e.target.value = ""; }
+                        if (loadedCount === files.length) { 
+                            savePostedFiles();
+                            renderPostList(); 
+                            e.target.value = ""; 
+                        }
                     }; 
                     reader.readAsText(file);
                 })(files[i]);
             }
         }
 
-        function clearPostedFiles() { postedFiles = []; renderPostList(); document.getElementById("file-post").value = ""; }
+        function clearPostedFiles() { postedFiles = []; savePostedFiles(); renderPostList(); document.getElementById("file-post").value = ""; }
 
         function updateMailbox(aiText) { 
             var blocks = extractCodeBlocks(aiText); 
@@ -367,7 +380,7 @@
                 var fm = (codeLines[0] || "").match(/FILE:\s*([^\s>*]+)/); 
                 var body = b.code; 
                 if (fm) { fileName = fm[1]; body = codeLines.slice(1).join("\n"); } 
-                else { fileName = "received_" + getFormattedTime().replace(/[^0-9]/g, "") + "_" + (bi + 1) + "." + (CODE_EXT[b.lang] || "txt"); } 
+                else { fileName = "received_" + Date.now() + "_" + (bi + 1) + "." + (CODE_EXT[b.lang] || "txt"); } 
                 
                 var wrapper = document.createElement("div");
                 wrapper.style.cssText = "display:flex; gap:4px; margin-bottom:4px;";
@@ -400,31 +413,19 @@
         async function purgeCodeFromLog(rawTextToReplace) {
             var purged = false;
             for (var i = chatLogArray.length - 1; i >= 0; i--) {
-                var targetText = chatLogArray[i].content !== undefined ? chatLogArray[i].content : chatLogArray[i].text;
-                if (chatLogArray[i].crew === "かなえ" && targetText && targetText.includes(rawTextToReplace)) {
-                    var newText = targetText.replace(rawTextToReplace, "\n[※このコードは船長によって郵便受けから抽出・パージされました]\n");
+                if (chatLogArray[i].crew === "かなえ" && chatLogArray[i].content && chatLogArray[i].content.includes(rawTextToReplace)) {
+                    chatLogArray[i].content = chatLogArray[i].content.replace(rawTextToReplace, "\n[※このコードは船長によって郵便受けから抽出・パージされました]\n");
+                    chatLogArray[i].updated_at = Date.now(); 
                     
-                    if (chatLogArray[i].content !== undefined) {
-                        chatLogArray[i].content = newText;
-                        await db.collection("chats").doc(chatLogArray[i].id.toString()).update({
-                            content: newText
-                        });
-                    } else {
-                        chatLogArray[i].text = newText;
-                        chatLogArray[i].updated_at = Date.now();
-                        await db.collection("chats").doc(chatLogArray[i].id.toString()).update({
-                            text: newText,
-                            updated_at: chatLogArray[i].updated_at
-                        });
-                    }
+                    await db.collection("chats").doc(chatLogArray[i].id.toString()).update({
+                        content: chatLogArray[i].content,
+                        updated_at: chatLogArray[i].updated_at
+                    });
                     purged = true;
                     break; 
                 }
             }
-            if (purged) {
-                renderLogs();
-                alert("コードを抽出・パージしました。Firebase上のデータも更新されました！");
-            }
+            if (purged) { renderLogs(); alert("抽出完了！Firebaseの履歴からもパージしました。"); }
         }
 
         function loadEruda() {
@@ -575,45 +576,17 @@
         inputArea.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; });
         inputArea.addEventListener('keydown', function(e) { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (!sendBtn.disabled) sendBtn.click(); } });
 
-        function getFormattedTime() {
-            var now = new Date(); var yyyy = now.getFullYear(); var mm = ("0" + (now.getMonth() + 1)).slice(-2); var dd = ("0" + now.getDate()).slice(-2);
-            var dayStr = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
-            var hh = ("0" + now.getHours()).slice(-2); var min = ("0" + now.getMinutes()).slice(-2);
-            return yyyy + "/" + mm + "/" + dd + "(" + dayStr + ") " + hh + ":" + min;
-        }
-
-        // ▼時間復元関数（旧データとの互換性・新規データの表示用）
-        function getRestoredTime(id) {
-            var date = new Date(id); 
-            var dayStr = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
-            var yyyy = date.getFullYear(); 
-            var mm = ("0" + (date.getMonth() + 1)).slice(-2); 
-            var dd = ("0" + date.getDate()).slice(-2);
-            var hh = ("0" + date.getHours()).slice(-2); 
-            var min = ("0" + date.getMinutes()).slice(-2);
-            return yyyy + "/" + mm + "/" + dd + "(" + dayStr + ") " + hh + ":" + min;
-        }
-
         function updateRadar() {
-            var totalChars = chatLogArray.reduce((acc, log) => {
-                var txt = log.content !== undefined ? log.content : (log.text || "");
-                return acc + txt.length;
-            }, 0);
+            var totalChars = chatLogArray.reduce((acc, log) => acc + (log.content || log.text || "").length, 0);
             document.getElementById("radar-waltz").innerText = sessionWaltzCount;
             document.getElementById("radar-chars").innerText = totalChars.toLocaleString();
         }
 
         function enforceMemoryLimit() {
             var STORAGE_LIMIT = 2000000;
-            var totalChars = chatLogArray.reduce((acc, log) => {
-                var txt = log.content !== undefined ? log.content : (log.text || "");
-                return acc + txt.length;
-            }, 0);
+            var totalChars = chatLogArray.reduce((acc, log) => acc + (log.content || log.text || "").length, 0);
             while (totalChars > STORAGE_LIMIT && chatLogArray.length >= 2) {
-                var dropped1 = chatLogArray.shift(); var dropped2 = chatLogArray.shift(); 
-                var txt1 = dropped1.content !== undefined ? dropped1.content : (dropped1.text || "");
-                var txt2 = dropped2.content !== undefined ? dropped2.content : (dropped2.text || "");
-                totalChars -= (txt1.length + txt2.length);
+                var dropped1 = chatLogArray.shift(); var dropped2 = chatLogArray.shift(); totalChars -= ((dropped1.content || dropped1.text || "").length + (dropped2.content || dropped2.text || "").length);
             }
         }
 
@@ -631,7 +604,6 @@
 
         function updateCacheUI() {
             var statusText = document.getElementById("cache-status-text");
-
             if (activeCacheName && activeCacheExpiry > Date.now()) {
                 var remainSec = Math.floor((activeCacheExpiry - Date.now()) / 1000);
                 var m = Math.floor(remainSec / 60);
@@ -648,7 +620,8 @@
             }
         }
 
-        async function fetchGeminiAPI(currentFiles = null, isAutoRetry = false) {
+        // ▼API送信処理（過去ログではなく、現在棚にあるONのファイルを動的結合）
+        async function fetchGeminiAPI(currentFiles) {
             var apiKey = localStorage.getItem(API_KEY_VAULT); if (!apiKey) { alert("APIキーがありません。"); return null; }
 
             var sendLogs = chatLogArray.slice();
@@ -658,8 +631,7 @@
             var allContents = [];
             sendLogs.forEach(function(log) {
                 var role = log.crew === "船長" ? "user" : "model";
-                var txt = log.content !== undefined ? log.content : log.text;
-                var parts = [{ text: txt }];
+                var parts = [{ text: log.content || log.text || "" }];
                 
                 var lastContent = allContents[allContents.length - 1];
                 if (lastContent && lastContent.role === role) { 
@@ -669,12 +641,12 @@
                 }
             });
 
-            // DBから消えた生データを、送信の直前だけ動的にくっつける
+            // 【棚の結合】現在の最新発言（船長）の末尾に、チェックONのファイル生データを結合する
             if (currentFiles && currentFiles.length > 0) {
-                var lastIdx = allContents.length - 1;
-                if (lastIdx >= 0 && allContents[lastIdx].role === "user") {
+                var lastUser = allContents[allContents.length - 1];
+                if (lastUser && lastUser.role === "user") {
                     currentFiles.forEach(function(f) {
-                        allContents[lastIdx].parts.push({ text: "\n\n[参照ファイル: " + f.name + "]\n" + f.content });
+                        lastUser.parts.push({ text: "\n\n[参照ファイル: " + f.name + "]\n" + f.content });
                     });
                 }
             }
@@ -686,45 +658,27 @@
             finalInstruction += "\n\n【検索ツール実行に関する厳格なプロトコル】\n・ユーザーから明確な検索キーワードや調査対象が提示された場合のみ、Google Searchツールを使用すること。\n・「検索機能は使えるか？」等の能力を問う質問にはツールを起動せず、テキストのみで応答すること。\n・検索キーワードが空のままツールを起動することは重大なシステムエラーを引き起こすため、情報の補足をユーザーに求めること。";
             
             var sysInstObj = finalInstruction.trim() !== "" ? { parts: [{ text: finalInstruction }] } : undefined;
-
             var historyForCache = allContents.length > 1 ? allContents.slice(0, -1) : [];
             
-            if ((!activeCacheName || activeCacheExpiry <= Date.now() || allContents.length < activeCacheLength) && historyForCache.length > 0 && !isAutoRetry) {
-                let cacheBody = {
-                    model: "models/gemini-3.1-pro-preview",
-                    contents: historyForCache,
-                    tools: [{ googleSearch: {} }],
-                    systemInstruction: sysInstObj,
-                    ttl: "3600s"
-                };
+            if ((!activeCacheName || activeCacheExpiry <= Date.now() || allContents.length < activeCacheLength) && historyForCache.length > 0) {
+                let cacheBody = { model: "models/gemini-3.1-pro-preview", contents: historyForCache, tools: [{ googleSearch: {} }], systemInstruction: sysInstObj, ttl: "3600s" };
                 try {
                     let cacheRes = await fetch("https://generativelanguage.googleapis.com/v1beta/cachedContents?key=" + apiKey, {
                         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cacheBody)
                     });
                     let cacheData = await cacheRes.json();
                     if (cacheData.name) {
-                        activeCacheName = cacheData.name;
-                        activeCacheExpiry = Date.now() + 3600000;
-                        activeCacheLength = historyForCache.length;
-                        localStorage.setItem("gemini_cache_name", activeCacheName);
-                        localStorage.setItem("gemini_cache_expiry", activeCacheExpiry);
-                        localStorage.setItem("gemini_cache_length", activeCacheLength);
+                        activeCacheName = cacheData.name; activeCacheExpiry = Date.now() + 3600000; activeCacheLength = historyForCache.length;
+                        localStorage.setItem("gemini_cache_name", activeCacheName); localStorage.setItem("gemini_cache_expiry", activeCacheExpiry); localStorage.setItem("gemini_cache_length", activeCacheLength);
                     }
-                } catch (e) {
-                    console.warn("自動キャッシュ作成に通信失敗しました。通常通信を続行します。");
-                }
+                } catch (e) { console.warn("自動キャッシュ作成失敗"); }
             }
 
             var requestBody = {};
-
             if (activeCacheName && activeCacheExpiry > Date.now() && allContents.length > activeCacheLength) {
-                requestBody.cachedContent = activeCacheName;
-                requestBody.contents = allContents.slice(activeCacheLength);
+                requestBody.cachedContent = activeCacheName; requestBody.contents = allContents.slice(activeCacheLength);
             } else {
-                activeCacheName = null;
-                updateCacheUI();
-                requestBody.contents = allContents;
-                requestBody.tools = [{ googleSearch: {} }];
+                activeCacheName = null; updateCacheUI(); requestBody.contents = allContents; requestBody.tools = [{ googleSearch: {} }];
                 if (sysInstObj) { requestBody.systemInstruction = sysInstObj; }
             }
 
@@ -735,31 +689,37 @@
                 var data = await response.json();
                 
                 if (data.error) {
-                    if (activeCacheName && !isAutoRetry && (data.error.message.includes("unavailable") || data.error.message.includes("cache") || data.error.message.includes("not found"))) {
-                        console.warn("【システム監視】サーバー側のキャッシュ消失を検知。フル送信で自律リトライを実行します。");
-                        activeCacheName = null; updateCacheUI(); return await fetchGeminiAPI(currentFiles, true);
+                    if (activeCacheName && (data.error.message.includes("unavailable") || data.error.message.includes("cache") || data.error.message.includes("not found"))) {
+                        activeCacheName = null; updateCacheUI(); return await fetchGeminiAPI(currentFiles); // リトライ
                     }
-                    alert("APIからの拒否理由: " + data.error.message); return null; 
+                    alert("API拒否: " + data.error.message); return null; 
                 }
 
-                if (data.candidates && data.candidates[0].finishReason === "MALFORMED_FUNCTION_CALL") { return "【システム割り込み】検索ツールを実行しようと直接呼び出しましたが、対象となるキーワードが指定されていません。「何を」検索するか教えていただけますか？"; }
+                if (data.candidates && data.candidates[0].finishReason === "MALFORMED_FUNCTION_CALL") { return "【システム割り込み】検索対象キーワードが指定されていません。"; }
                 if (!data.candidates || !data.candidates[0].content || !data.candidates[0].content.parts) { alert("異常データ受信: " + JSON.stringify(data).substring(0, 300)); return null; }            
 
                 if (data.candidates && data.candidates[0].content.parts[0].text) {
                     if (data.usageMetadata) {
                         if (data.usageMetadata.candidatesTokenCount) { totalOutputTokens += data.usageMetadata.candidatesTokenCount; localStorage.setItem(TOKEN_VAULT, totalOutputTokens); }
                         if (data.usageMetadata.promptTokenCount) { totalInputTokens += data.usageMetadata.promptTokenCount; localStorage.setItem(INPUT_TOKEN_VAULT, totalInputTokens); }
-
-                        var turnCacheHit = data.usageMetadata.cachedContentTokenCount || 0;
                         var turnStatusEl = document.getElementById("turn-cache-status");
-                        if (turnStatusEl) {
-                            if (turnCacheHit > 0) { turnStatusEl.innerText = "🟢"; } else { turnStatusEl.innerText = "🔴"; }
-                        }
+                        if (turnStatusEl) { turnStatusEl.innerText = (data.usageMetadata.cachedContentTokenCount || 0) > 0 ? "🟢" : "🔴"; }
                     }
                     return data.candidates[0].content.parts[0].text;
                 } else { return null; }
-                
-            } catch (error) { alert("通信沈黙：サーバーへの接続に失敗しました。"); return null; }
+            } catch (error) { alert("サーバー接続失敗"); return null; }
+        }
+
+        // ▼UI描画：idからの時間錬成ロジック
+        function getRestoredTime(id) {
+            var d = new Date(parseInt(id, 10));
+            var dayStr = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
+            var yyyy = d.getFullYear();
+            var mm = ("0" + (d.getMonth() + 1)).slice(-2);
+            var dd = ("0" + d.getDate()).slice(-2);
+            var hh = ("0" + d.getHours()).slice(-2);
+            var min = ("0" + d.getMinutes()).slice(-2);
+            return yyyy + "/" + mm + "/" + dd + "(" + dayStr + ") " + hh + ":" + min;
         }
 
         function buildLogElement(log, index) {
@@ -767,11 +727,11 @@
             var meta = document.createElement("div"); meta.className = "log-meta";
             var cb = document.createElement("input"); cb.type = "checkbox"; cb.className = "log-checkbox"; cb.value = index; meta.appendChild(cb);
             
-            var displayTime = log.time || getRestoredTime(log.id);
-            var span = document.createElement("span"); span.innerHTML = displayTime + " " + log.crew + "："; meta.appendChild(span);
+            var timeStr = log.time ? log.time : getRestoredTime(log.id);
+            var span = document.createElement("span"); span.innerHTML = timeStr + " " + log.crew + "："; meta.appendChild(span);
             
-            var displayContent = log.content !== undefined ? log.content : log.text;
-            var textNode = document.createElement("div"); textNode.style.whiteSpace = "pre-wrap"; textNode.textContent = displayContent;
+            var contentText = log.content !== undefined ? log.content : (log.text || "");
+            var textNode = document.createElement("div"); textNode.style.whiteSpace = "pre-wrap"; textNode.textContent = contentText;
             
             if (log.attachedFiles && log.attachedFiles.length > 0) {
                 var attachDiv = document.createElement("div");
@@ -781,7 +741,6 @@
                 attachDiv.textContent = "📎 添付ファイル: " + fileNames.join(", ");
                 textNode.insertBefore(attachDiv, textNode.firstChild);
             }
-
             wrapper.appendChild(meta); wrapper.appendChild(textNode);
             return wrapper;
         }
@@ -817,6 +776,8 @@
                 activeCacheExpiry = parseInt(localStorage.getItem("gemini_cache_expiry")) || 0;
             }
             
+            renderPostList(); // 棚の初期描画
+
             try {
                 var promptSnap = await db.collection("records").doc("persona_kanae").get();
                 if(promptSnap.exists) {
@@ -828,29 +789,19 @@
 
             try {
                 var memoSnap = await db.collection("records").doc("memo_master").get();
-                if(memoSnap.exists && memoSnap.data().memos) {
-                    memoArray = memoSnap.data().memos;
-                }
+                if(memoSnap.exists && memoSnap.data().memos) { memoArray = memoSnap.data().memos; }
                 if (memoArray.length > 0) activeMemoIndex = 0;
             } catch(e) { console.error("メモ読込エラー", e); }
 
             try {
-                var chatSnap = await db.collection("chats")
-                .orderBy("id", "desc")
-                .limit(100)
-                .get();
+                var chatSnap = await db.collection("chats").orderBy("id", "desc").limit(100).get();
                 chatLogArray = [];
-                chatSnap.forEach(doc => {
-                    chatLogArray.push(doc.data());
-                });
+                chatSnap.forEach(doc => { chatLogArray.push(doc.data()); });
                 chatLogArray.sort((a, b) => a.id - b.id);
-            } catch(e) { 
-                console.error("チャット読込エラー", e); 
-            }
+            } catch(e) { console.error("チャット読込エラー", e); }
 
             renderLogs(); renderTimers();
             if (localStorage.getItem(API_KEY_VAULT)) document.getElementById("api-key-input").value = "********"; 
-            
             setInterval(updateCacheUI, 1000); updateCacheUI();
         }
 
@@ -858,9 +809,9 @@
             var checked = Array.from(document.querySelectorAll(".log-checkbox:checked")); if(!checked.length) return;
             var copyText = checked.map(cb => {
                 var log = chatLogArray[cb.value];
-                var displayTime = log.time || getRestoredTime(log.id);
-                var txt = log.content !== undefined ? log.content : (log.text || "");
-                return "【" + displayTime + "】 " + log.crew + "：\n" + txt;
+                var timeStr = log.time ? log.time : getRestoredTime(log.id);
+                var contentText = log.content !== undefined ? log.content : (log.text || "");
+                return "【" + timeStr + "】 " + log.crew + "：\n" + contentText;
             }).join("\n\n---\n");
             navigator.clipboard.writeText(copyText).then(() => { alert(checked.length + "件の歴史をコピーしました。"); closeAllSidebars(); });
         };
@@ -876,14 +827,13 @@
                     batch.delete(ref);
                 });
                 await batch.commit();
-
                 chatLogArray = chatLogArray.filter((_, idx) => !targetIndices.has(idx)); 
                 enforceMemoryLimit(); renderLogs(); closeAllSidebars();
             }
         };
 
         document.getElementById("reset-meter-btn").onclick = function() {
-            if (confirm("トークンとワルツのメーターをゼロにリセットしますか？（歴史は保持されます）")) {
+            if (confirm("メーターをゼロにリセットしますか？")) {
                 totalOutputTokens = 0; localStorage.setItem(TOKEN_VAULT, 0); totalInputTokens = 0; localStorage.setItem(INPUT_TOKEN_VAULT, 0);
                 sessionWaltzCount = 0; localStorage.setItem(WALTZ_COUNT_VAULT, 0); timeHistory = []; renderTimers(); updateRadar();
             }
@@ -892,9 +842,13 @@
         document.getElementById("save-key-btn").onclick = function() { var key = document.getElementById("api-key-input").value; if (key && key !== "********") { localStorage.setItem(API_KEY_VAULT, key); document.getElementById("api-key-input").value = "********"; alert("保存完了"); } };
         document.getElementById("delete-key-btn").onclick = function() { localStorage.removeItem(API_KEY_VAULT); document.getElementById("api-key-input").value = ""; alert("消去完了"); };
 
+        // ▼送信ボタン（スキーマ浄化とチェック済みファイルのみの結合）
         sendBtn.onclick = async function() {
             var text = inputArea.value;
-            var currentFiles = postedFiles.length > 0 ? postedFiles.slice() : null; 
+            
+            // 棚からチェックがONのファイルのみを抽出（生データ込み）
+            var checkedFiles = postedFiles.filter(f => f.checked !== false);
+            var currentFiles = checkedFiles.length > 0 ? checkedFiles.map(f => ({ name: f.name, content: f.content })) : null;
 
             if (text !== "" || currentFiles) { 
                 sendBtn.disabled = true; sendBtn.innerText = "通信中..."; 
@@ -910,10 +864,9 @@
                 
                 var nowNum = Date.now();
                 
-                // 【DB保存用データの軽量化】ファイル名のみ抽出。生データはパージ
+                // DB保存用には名前だけ残し、生データは完全にパージする
                 var dbFiles = currentFiles ? currentFiles.map(f => ({ name: f.name })) : [];
 
-                // スキーマの浄化：timeとupdated_atを削除し、textをcontentへリネーム
                 var userLog = { 
                     id: nowNum,
                     crew: "船長", 
@@ -925,19 +878,16 @@
                 appendLogElement(chatLogArray.length - 1);
                 await db.collection("chats").doc(nowNum.toString()).set(userLog);
 
-                // UIの投函リストをクリア
-                if (currentFiles) { clearPostedFiles(); }
-                setTimeout(() => { inputArea.value = ""; }, 10);
-
-                // APIには生データを含んだ currentFiles を渡す
+                // APIには生データを含んだ currentFiles をそのまま渡す
                 var aiResponseText = await fetchGeminiAPI(currentFiles);
+
+                // ※ファイルは棚に残り続けるため clearPostedFiles() は呼ばない
 
                 clearInterval(timerInterval);
                 timeHistory.push(((performance.now() - startTime) / 1000).toFixed(1) + "秒"); if (timeHistory.length > 1) timeHistory.shift(); renderTimers();
 
                 if (aiResponseText !== null) {
                     var aiNum = Date.now();
-                    // AI側のログも同様に軽量化
                     var aiLog = {
                         id: aiNum,
                         crew: "かなえ",
