@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>イフリート21号（自律母艦仕様・メモコンソール搭載）</title>
+    <title>イフリート21号（Neon仕様・トークンモニター搭載）</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2c3e50">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -20,22 +20,17 @@
         header, #control-area, #sidebar-console, #right-sidebar { -webkit-user-select: none; user-select: none; }
         header { height: 40px; flex: none; background-color: #2c3e50; color: #ffffff; display: flex; justify-content: space-between; align-items: center; padding: 0 15px; font-size: 14px; font-weight: bold; position: relative; z-index: 30; }
 
-        #log-window { padding: 15px 10px !important; }
-        #log-window { flex: 1; background-color: #ffffff; padding: 15px 10px; overflow-y: auto; border-bottom: 2px solid #bdc3c7; -webkit-user-select: text; user-select: text; }
-        .log-user, .log-ai { font-family: "MS UI Gothic", "Yu Gothic UI", "Meiryo UI", sans-serif; font-size: 16px; line-height: 1.6; -webkit-user-select: text; user-select: text; }
-        .log-meta { font-size: 12px; color: #737373; margin-bottom: 20px; font-family: sans-serif; display: flex; align-items: center; gap: 5px; -webkit-user-select: none; user-select: none; }
+        #log-window { flex: 1; background-color: #ffffff; padding: 15px 10px !important; overflow-y: auto; border-bottom: 2px solid #bdc3c7; -webkit-user-select: text; user-select: text; }
+        .log-user, .log-ai { font-family: "MS UI Gothic", "Yu Gothic UI", "Meiryo UI", sans-serif; font-size: 16px; line-height: 1.6; -webkit-user-select: text; user-select: text; padding-bottom: 0 !important; margin-bottom: 40px !important; }
+        .log-meta { font-size: 12px; color: #737373; margin-bottom: 10px !important; font-family: sans-serif; display: flex; align-items: center; gap: 5px; -webkit-user-select: none; user-select: none; }
         .log-checkbox { width: 14px; height: 14px; cursor: pointer; }
-      
-        /* 対話ブロックの構造的グループ化 */
-        .log-user, .log-ai { padding-bottom: 0 !important; margin-bottom: 40px !important; }
-        .log-meta { margin-bottom: 10px !important; }
 
         #input-window { min-height: 70px; flex: none; padding: 10px; background-color: #ecf0f1; display: flex; flex-direction: column; border-top: 1px solid #bdc3c7; }
         textarea#main-input { flex-grow: 1; resize: none; padding: 10px; font-size: 16px; border: 1px solid #95a5a6; border-radius: 5px; color: #595959; outline: none; transition: border-color 0.2s, box-shadow 0.2s; overflow-y: hidden; line-height: 1.5; }
         textarea#main-input:focus { border-color: #2e648c; box-shadow: 0 0 0 2px rgba(46, 100, 140, 0.2); }
         
-        #control-area { height: auto; flex: none; background-color: #ecf0f1; display: flex; justify-content: space-between; align-items: stretch; padding: 0 10px 15px 10px; gap: 15px; }
-        #radar-panel { display: flex; gap: 10px; font-family: sans-serif; font-size: 12px; color: #595959; flex: 1; align-items: center; }
+        #control-area { height: auto; flex: none; background-color: #ecf0f1; display: flex; justify-content: space-between; align-items: stretch; padding: 0 10px 15px 10px; gap: 10px; }
+        #radar-panel { display: flex; gap: 8px; font-family: sans-serif; font-size: 12px; color: #595959; flex: 1; align-items: center; }
         .radar-col { display: flex; flex-direction: column; gap: 5px; }
         .radar-item { background: #e0e6ed; padding: 6px 8px; border-radius: 4px; font-weight: bold; white-space: nowrap; }
         
@@ -48,6 +43,10 @@
         .btn-send { background-color: #2980b9; color: #ffffff; flex: 1; font-size: 14px; }
         #timer-container { display: flex; gap: 8px; font-family: monospace; font-size: 14px; font-weight: bold; white-space: nowrap; justify-content: flex-end; align-items: center; color: #333333; }
         
+        #thinking-toggle-btn { font-size: 11px; padding: 0 8px; border: none; border-radius: 4px; color: #ffffff; align-self: stretch; display: flex; align-items: center; justify-content: center; min-width: 46px; }
+        #thinking-toggle-btn.mode-med { background-color: #34495e; }
+        #thinking-toggle-btn.mode-high { background-color: #d35400; }
+
         #sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background-color: rgba(0,0,0,0.5); z-index: 35; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s; }
         #sidebar-overlay.open { opacity: 1; visibility: visible; }
         
@@ -90,7 +89,7 @@
                 border-bottom: 2px solid #bdc3c7; -webkit-user-select: text; user-select: text;
             }
             #input-window { min-height: 50px; padding: 6px 10px; }
-            #control-area { padding: 0 15px 15px 16px; }
+            #control-area { padding: 0 12px 15px 12px; }
             .log-user, .log-ai, textarea#main-input { font-size: 20px !important; line-height: 1.5 !important; }
         }
     </style>
@@ -122,8 +121,17 @@
             </div>
         </div>
         <div class="console-section">
-            <div class="console-title">通信コスト統制（キャッシュ）</div>
-            <div style="font-size: 14px; font-weight: bold; color: #bdc3c7; margin-bottom: 5px; font-family: monospace;" id="cache-status-text">状態: 未凍結（フル送信）</div>
+            <div class="console-title">通信コスト統制（自動キャッシュ）</div>
+            <div style="font-size: 13px; font-weight: bold; color: #bdc3c7; font-family: monospace;" id="cache-status-text">状態: 待機中（Neon自動）</div>
+            <div id="token-monitor" style="background:#2c3e50; padding:8px; border-radius:4px; font-family:monospace; font-size:12px; color:#ecf0f1; line-height:1.6;">
+                <div>直近入力: <span id="tm-in">-</span> tok</div>
+                <div>うちｷｬｯｼｭ: <span id="tm-cache" style="color:#2ecc71;">-</span></div>
+                <div>直近思考: <span id="tm-thought" style="color:#f1c40f;">-</span> tok</div>
+                <div>直近本文: <span id="tm-out">-</span> tok</div>
+                <div style="border-top:1px dashed #7f8c8d; margin-top:4px; padding-top:4px; font-size:11px; color:#bdc3c7;">
+                    累計 IN: <span id="tm-total-in">0</span> / OUT: <span id="tm-total-out">0</span>
+                </div>
+            </div>
         </div>
 
         <div class="console-section">
@@ -142,7 +150,7 @@
         </div>
         
         <div style="margin-top: auto; padding-top: 15px; text-align: center; color: #ecf0f1; font-size: 11px; font-weight: normal; opacity: 0.7;">
-            イフリート21号 (2026/11/10 稼働版)
+            イフリート21号 (4 Neon 対応版)
         </div>
     </div>
 
@@ -205,12 +213,13 @@
 
     <div id="control-area">
         <div id="radar-panel">
-            <div class="radar-col" style="margin-left: 5px;">
+            <div class="radar-col" style="margin-left: 2px;">
                 <div class="radar-item">ワルツ: <span id="radar-waltz">0</span></div>
                 <div class="radar-item">文字数: <span id="radar-chars">0</span></div>
             </div>
-            <button id="reset-meter-btn" style="font-size:10px; padding:0 8px; border:none; border-radius:4px; background:#e0e6ed; color:#595959; align-self: stretch; display: flex; align-items: center; justify-content: center; margin-left: 5px;">ﾘｾｯﾄ</button>
-            <span id="turn-cache-status" style="font-size: 16px; line-height: 1; margin-left: 5px;">⚪</span>
+            <button id="reset-meter-btn" style="font-size:10px; padding:0 8px; border:none; border-radius:4px; background:#e0e6ed; color:#595959; align-self: stretch; display: flex; align-items: center; justify-content: center;">ﾘｾｯﾄ</button>
+            <button id="thinking-toggle-btn" class="mode-med" title="思考レベル切替 (medium / high)">MED</button>
+            <span id="turn-cache-status" style="font-size: 16px; line-height: 1;">⚪</span>
             <div style="display:flex; align-items:center; margin-left:auto;">
                 <div id="timer-container"><span style="color:#333333;">0.0秒</span></div>
             </div>
@@ -248,6 +257,8 @@
         var TOKEN_VAULT = "gemini_out_tokens";
         var INPUT_TOKEN_VAULT = "gemini_in_tokens";
         var WALTZ_COUNT_VAULT = "gemini_waltz_count";
+        var THINKING_VAULT = "gemini_thinking_level";
+        var MODEL_ID = "gemini-4-neon";
         
         var chatLogArray = [];
         var memoArray = [];
@@ -256,7 +267,8 @@
         var totalOutputTokens = 0;
         var totalInputTokens = 0;
         var sessionWaltzCount = 0;
-        var timeHistory = []; 
+        var timeHistory = [];
+        var currentThinkingLevel = localStorage.getItem(THINKING_VAULT) === "high" ? "high" : "medium";
         
         // ▼棚の永続化とチェック状態の読み込み
         var postedFiles = [];
@@ -443,17 +455,36 @@
             document.head.appendChild(script);
         }
 
-        var activeCacheName = null;
-        var activeCacheLength = 0;
-        var activeCacheExpiry = 0;
-
         var logArea = document.getElementById("log-window");
         var inputArea = document.getElementById("main-input");
         var sendBtn = document.querySelector(".btn-send");
+        var thinkingBtn = document.getElementById("thinking-toggle-btn");
         
         var consolePanel = document.getElementById("sidebar-console");
         var rightPanel = document.getElementById("right-sidebar");
         var overlay = document.getElementById("sidebar-overlay");
+
+        function updateThinkingUI() {
+            if (currentThinkingLevel === "high") {
+                thinkingBtn.textContent = "HIGH";
+                thinkingBtn.className = "mode-high";
+            } else {
+                thinkingBtn.textContent = "MED";
+                thinkingBtn.className = "mode-med";
+            }
+        }
+        thinkingBtn.onclick = function() {
+            currentThinkingLevel = currentThinkingLevel === "high" ? "medium" : "high";
+            localStorage.setItem(THINKING_VAULT, currentThinkingLevel);
+            updateThinkingUI();
+        };
+
+        function updateTokenTotalsUI() {
+            var elIn = document.getElementById("tm-total-in");
+            var elOut = document.getElementById("tm-total-out");
+            if (elIn) elIn.textContent = totalInputTokens.toLocaleString();
+            if (elOut) elOut.textContent = totalOutputTokens.toLocaleString();
+        }
 
         function openSidebar() { consolePanel.classList.add("open"); overlay.classList.add("open"); }
         function openRightSidebar() { rightPanel.classList.add("open"); overlay.classList.add("open"); }
@@ -602,25 +633,7 @@
             container.innerHTML = html;
         }
 
-        function updateCacheUI() {
-            var statusText = document.getElementById("cache-status-text");
-            if (activeCacheName && activeCacheExpiry > Date.now()) {
-                var remainSec = Math.floor((activeCacheExpiry - Date.now()) / 1000);
-                var m = Math.floor(remainSec / 60);
-                var s = remainSec % 60;
-                statusText.innerText = "状態: 凍結中 (残り " + ("0" + m).slice(-2) + ":" + ("0" + s).slice(-2) + ")";
-                statusText.style.color = "#f1c40f";
-            } else {
-                activeCacheName = null;
-                localStorage.removeItem("gemini_cache_name");
-                localStorage.removeItem("gemini_cache_length");
-                localStorage.removeItem("gemini_cache_expiry");
-                statusText.innerText = "状態: 未凍結（フル送信）";
-                statusText.style.color = "#bdc3c7";
-            }
-        }
-
-        // ▼API送信処理（過去ログではなく、現在棚にあるONのファイルを動的結合）
+        // ▼API送信処理（Gemini 4 Neon・自動キャッシュ・思考トークン監視対応）
         async function fetchGeminiAPI(currentFiles) {
             var apiKey = localStorage.getItem(API_KEY_VAULT); if (!apiKey) { alert("APIキーがありません。"); return null; }
 
@@ -658,54 +671,74 @@
             finalInstruction += "\n\n【検索ツール実行に関する厳格なプロトコル】\n・ユーザーから明確な検索キーワードや調査対象が提示された場合のみ、Google Searchツールを使用すること。\n・「検索機能は使えるか？」等の能力を問う質問にはツールを起動せず、テキストのみで応答すること。\n・検索キーワードが空のままツールを起動することは重大なシステムエラーを引き起こすため、情報の補足をユーザーに求めること。";
             
             var sysInstObj = finalInstruction.trim() !== "" ? { parts: [{ text: finalInstruction }] } : undefined;
-            var historyForCache = allContents.length > 1 ? allContents.slice(0, -1) : [];
-            
-            if ((!activeCacheName || activeCacheExpiry <= Date.now() || allContents.length < activeCacheLength) && historyForCache.length > 0) {
-                let cacheBody = { model: "models/gemini-3.1-pro-preview", contents: historyForCache, tools: [{ googleSearch: {} }], systemInstruction: sysInstObj, ttl: "3600s" };
-                try {
-                    let cacheRes = await fetch("https://generativelanguage.googleapis.com/v1beta/cachedContents?key=" + apiKey, {
-                        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cacheBody)
-                    });
-                    let cacheData = await cacheRes.json();
-                    if (cacheData.name) {
-                        activeCacheName = cacheData.name; activeCacheExpiry = Date.now() + 3600000; activeCacheLength = historyForCache.length;
-                        localStorage.setItem("gemini_cache_name", activeCacheName); localStorage.setItem("gemini_cache_expiry", activeCacheExpiry); localStorage.setItem("gemini_cache_length", activeCacheLength);
+
+            var requestBody = {
+                contents: allContents,
+                tools: [{ googleSearch: {} }],
+                generationConfig: {
+                    thinkingConfig: {
+                        thinkingLevel: currentThinkingLevel.toUpperCase()
                     }
-                } catch (e) { console.warn("自動キャッシュ作成失敗"); }
-            }
+                }
+            };
+            if (sysInstObj) { requestBody.systemInstruction = sysInstObj; }
 
-            var requestBody = {};
-            if (activeCacheName && activeCacheExpiry > Date.now() && allContents.length > activeCacheLength) {
-                requestBody.cachedContent = activeCacheName; requestBody.contents = allContents.slice(activeCacheLength);
-            } else {
-                activeCacheName = null; updateCacheUI(); requestBody.contents = allContents; requestBody.tools = [{ googleSearch: {} }];
-                if (sysInstObj) { requestBody.systemInstruction = sysInstObj; }
-            }
-
-            var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=" + apiKey;
+            var url = "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL_ID + ":generateContent?key=" + apiKey;
 
             try {
                 var response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody) });
                 var data = await response.json();
                 
                 if (data.error) {
-                    if (activeCacheName && (data.error.message.includes("unavailable") || data.error.message.includes("cache") || data.error.message.includes("not found"))) {
-                        activeCacheName = null; updateCacheUI(); return await fetchGeminiAPI(currentFiles); // リトライ
-                    }
                     alert("API拒否: " + data.error.message); return null; 
                 }
 
                 if (data.candidates && data.candidates[0].finishReason === "MALFORMED_FUNCTION_CALL") { return "【システム割り込み】検索対象キーワードが指定されていません。"; }
-                if (!data.candidates || !data.candidates[0].content || !data.candidates[0].content.parts) { alert("異常データ受信: " + JSON.stringify(data).substring(0, 300)); return null; }            
+                if (!data.candidates || !data.candidates[0].content || !data.candidates[0].content.parts) { alert("異常データ受信: " + JSON.stringify(data).substring(0, 300)); return null; }
 
-                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                var responseText = data.candidates[0].content.parts
+                    .filter(function(p) { return !p.thought && typeof p.text === "string"; })
+                    .map(function(p) { return p.text; })
+                    .join("");
+
+                if (responseText) {
                     if (data.usageMetadata) {
-                        if (data.usageMetadata.candidatesTokenCount) { totalOutputTokens += data.usageMetadata.candidatesTokenCount; localStorage.setItem(TOKEN_VAULT, totalOutputTokens); }
-                        if (data.usageMetadata.promptTokenCount) { totalInputTokens += data.usageMetadata.promptTokenCount; localStorage.setItem(INPUT_TOKEN_VAULT, totalInputTokens); }
+                        var inTok = data.usageMetadata.promptTokenCount || 0;
+                        var cachedTok = data.usageMetadata.cachedContentTokenCount || 0;
+                        var thoughtTok = data.usageMetadata.thoughtsTokenCount || 0;
+                        var candTok = data.usageMetadata.candidatesTokenCount || 0;
+
+                        // 累計（出力は課金対象の思考＋本文を合算）
+                        totalInputTokens += inTok;
+                        totalOutputTokens += (candTok + thoughtTok);
+                        localStorage.setItem(INPUT_TOKEN_VAULT, totalInputTokens);
+                        localStorage.setItem(TOKEN_VAULT, totalOutputTokens);
+                        updateTokenTotalsUI();
+
+                        // ランプ＆キャッシュ状態更新
                         var turnStatusEl = document.getElementById("turn-cache-status");
-                        if (turnStatusEl) { turnStatusEl.innerText = (data.usageMetadata.cachedContentTokenCount || 0) > 0 ? "🟢" : "🔴"; }
+                        if (turnStatusEl) { turnStatusEl.innerText = cachedTok > 0 ? "🟢" : "🔴"; }
+                        var statusText = document.getElementById("cache-status-text");
+                        if (statusText) {
+                            if (cachedTok > 0) {
+                                statusText.innerText = "状態: 🟢 自動キャッシュ適用";
+                                statusText.style.color = "#2ecc71";
+                            } else {
+                                statusText.innerText = "状態: 🔴 未適用 (フル送信)";
+                                statusText.style.color = "#e74c3c";
+                            }
+                        }
+
+                        // 直近ターンのトークンモニター更新
+                        var hitRate = inTok > 0 ? Math.round((cachedTok / inTok) * 100) : 0;
+                        document.getElementById("tm-in").textContent = inTok.toLocaleString();
+                        var tmCacheEl = document.getElementById("tm-cache");
+                        tmCacheEl.textContent = cachedTok.toLocaleString() + " tok (" + hitRate + "%)";
+                        tmCacheEl.style.color = cachedTok > 0 ? "#2ecc71" : "#e74c3c";
+                        document.getElementById("tm-thought").textContent = thoughtTok.toLocaleString();
+                        document.getElementById("tm-out").textContent = candTok.toLocaleString();
                     }
-                    return data.candidates[0].content.parts[0].text;
+                    return responseText;
                 } else { return null; }
             } catch (error) { alert("サーバー接続失敗"); return null; }
         }
@@ -769,14 +802,14 @@
             var savedInTokens = localStorage.getItem(INPUT_TOKEN_VAULT); if (savedInTokens) totalInputTokens = parseInt(savedInTokens);
             var savedWaltz = localStorage.getItem(WALTZ_COUNT_VAULT); if (savedWaltz) sessionWaltzCount = parseInt(savedWaltz);
             
-            var savedCacheName = localStorage.getItem("gemini_cache_name");
-            if (savedCacheName) {
-                activeCacheName = savedCacheName;
-                activeCacheLength = parseInt(localStorage.getItem("gemini_cache_length")) || 0;
-                activeCacheExpiry = parseInt(localStorage.getItem("gemini_cache_expiry")) || 0;
-            }
-            
-            renderPostList(); // 棚の初期描画
+            // 旧・明示的キャッシュの残骸掃除
+            localStorage.removeItem("gemini_cache_name");
+            localStorage.removeItem("gemini_cache_length");
+            localStorage.removeItem("gemini_cache_expiry");
+
+            updateThinkingUI();
+            updateTokenTotalsUI();
+            renderPostList();
 
             try {
                 var promptSnap = await db.collection("records").doc("persona_kanae").get();
@@ -802,7 +835,6 @@
 
             renderLogs(); renderTimers();
             if (localStorage.getItem(API_KEY_VAULT)) document.getElementById("api-key-input").value = "********"; 
-            setInterval(updateCacheUI, 1000); updateCacheUI();
         }
 
         document.getElementById("copy-checked-btn").onclick = function() {
@@ -835,7 +867,13 @@
         document.getElementById("reset-meter-btn").onclick = function() {
             if (confirm("メーターをゼロにリセットしますか？")) {
                 totalOutputTokens = 0; localStorage.setItem(TOKEN_VAULT, 0); totalInputTokens = 0; localStorage.setItem(INPUT_TOKEN_VAULT, 0);
-                sessionWaltzCount = 0; localStorage.setItem(WALTZ_COUNT_VAULT, 0); timeHistory = []; renderTimers(); updateRadar();
+                sessionWaltzCount = 0; localStorage.setItem(WALTZ_COUNT_VAULT, 0); timeHistory = [];
+                document.getElementById("tm-in").textContent = "-";
+                document.getElementById("tm-cache").textContent = "-";
+                document.getElementById("tm-thought").textContent = "-";
+                document.getElementById("tm-out").textContent = "-";
+                updateTokenTotalsUI();
+                renderTimers(); updateRadar();
             }
         };
         
@@ -846,7 +884,6 @@
         sendBtn.onclick = async function() {
             var text = inputArea.value;
             
-            // 棚からチェックがONのファイルのみを抽出（生データ込み）
             var checkedFiles = postedFiles.filter(f => f.checked !== false);
             var currentFiles = checkedFiles.length > 0 ? checkedFiles.map(f => ({ name: f.name, content: f.content })) : null;
 
@@ -863,8 +900,6 @@
                 ]);
                 
                 var nowNum = Date.now();
-                
-                // DB保存用には名前だけ残し、生データは完全にパージする
                 var dbFiles = currentFiles ? currentFiles.map(f => ({ name: f.name })) : [];
 
                 var userLog = { 
@@ -878,10 +913,7 @@
                 appendLogElement(chatLogArray.length - 1);
                 await db.collection("chats").doc(nowNum.toString()).set(userLog);
 
-                // APIには生データを含んだ currentFiles をそのまま渡す
                 var aiResponseText = await fetchGeminiAPI(currentFiles);
-
-                // ※ファイルは棚に残り続けるため clearPostedFiles() は呼ばない
 
                 clearInterval(timerInterval);
                 timeHistory.push(((performance.now() - startTime) / 1000).toFixed(1) + "秒"); if (timeHistory.length > 1) timeHistory.shift(); renderTimers();
