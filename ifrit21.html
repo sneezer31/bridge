@@ -42,10 +42,10 @@
         .btn-group { display: flex; gap: 10px; flex: none; width: 80px; }
         .btn-send { background-color: #2980b9; color: #ffffff; flex: 1; font-size: 14px; }
         #timer-container { display: flex; gap: 8px; font-family: monospace; font-size: 14px; font-weight: bold; white-space: nowrap; justify-content: flex-end; align-items: center; color: #333333; }
-        
-        #thinking-toggle-btn { font-size: 11px; padding: 0 8px; border: none; border-radius: 4px; color: #ffffff; align-self: stretch; display: flex; align-items: center; justify-content: center; min-width: 46px; }
-        #thinking-toggle-btn.mode-med { background-color: #34495e; }
-        #thinking-toggle-btn.mode-high { background-color: #d35400; }
+
+        #thinking-toggle-btn { width: 100%; padding: 12px; border-radius: 5px; color: #ffffff; font-size: 13px; font-weight: bold; text-align: center; }
+        #thinking-toggle-btn.mode-med { background-color: #2c3e50; border: 1px solid #95a5a6; }
+        #thinking-toggle-btn.mode-high { background-color: #d35400; border: 1px solid #f39c12; }
 
         #sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background-color: rgba(0,0,0,0.5); z-index: 35; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s; }
         #sidebar-overlay.open { opacity: 1; visibility: visible; }
@@ -63,6 +63,8 @@
         .btn-warning { background-color: #f39c12; color: #fff; padding: 12px; border-radius: 5px; width: 100%; text-align: center; font-size: 13px; font-weight: bold; }
         .btn-danger { background-color: #c0392b; color: #fff; padding: 12px; border-radius: 5px; width: 100%; text-align: center; font-size: 13px; font-weight: bold; }
         .btn-small { background-color: #2980b9; padding: 10px; border-radius: 5px; flex: 1; color: white; text-align: center; font-size: 13px; font-weight: bold; }
+        .btn-log-delete { background-color: #e67e22; color: #ffffff; padding: 12px 6px; border-radius: 5px; flex: 1; text-align: center; font-size: 13px; font-weight: bold; }
+        .btn-log-copy { background-color: #27ae60; color: #ffffff; padding: 12px 6px; border-radius: 5px; flex: 1; text-align: center; font-size: 13px; font-weight: bold; }
         
         .right-action-row { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
         .right-action-buttons { display: flex; gap: 10px; }
@@ -120,6 +122,7 @@
                 荷物はありません
             </div>
         </div>
+
         <div class="console-section">
             <div class="console-title">通信コスト統制（自動キャッシュ）</div>
             <div style="font-size: 13px; font-weight: bold; color: #bdc3c7; font-family: monospace;" id="cache-status-text">状態: 待機中（Neon自動）</div>
@@ -135,6 +138,14 @@
         </div>
 
         <div class="console-section">
+            <div class="console-title">ログ管理（チェック項目）</div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-log-delete" id="delete-checked-btn">物理削除</button>
+                <button class="btn-log-copy" id="copy-checked-btn">コピー</button>
+            </div>
+        </div>
+
+        <div class="console-section">
             <div class="console-title">API認証</div>
             <input type="password" id="api-key-input" placeholder="APIキーを入力">
             <div style="display: flex; gap: 8px;">
@@ -143,10 +154,10 @@
             </div>
         </div>
 
-        <div class="console-section">
-            <div class="console-title">ログ管理</div>
-            <button class="btn-warning" id="copy-checked-btn">チェック項目をコピー</button>
-            <button class="btn-warning" id="delete-checked-btn">チェック項目を物理削除</button>
+        <div class="console-section" style="border-bottom: none; padding-bottom: 0;">
+            <div class="console-title">思考モード切り替え</div>
+            <button type="button" id="thinking-toggle-btn" class="mode-med" title="思考レベル切替 (medium / high)">現在：MEDIUM（標準）</button>
+            <div style="font-size: 11px; color: #bdc3c7;">※起動時は常にMEDIUMに戻ります</div>
         </div>
         
         <div style="margin-top: auto; padding-top: 15px; text-align: center; color: #ecf0f1; font-size: 11px; font-weight: normal; opacity: 0.7;">
@@ -218,7 +229,6 @@
                 <div class="radar-item">文字数: <span id="radar-chars">0</span></div>
             </div>
             <button id="reset-meter-btn" style="font-size:10px; padding:0 8px; border:none; border-radius:4px; background:#e0e6ed; color:#595959; align-self: stretch; display: flex; align-items: center; justify-content: center;">ﾘｾｯﾄ</button>
-            <button id="thinking-toggle-btn" class="mode-med" title="思考レベル切替 (medium / high)">MED</button>
             <span id="turn-cache-status" style="font-size: 16px; line-height: 1;">⚪</span>
             <div style="display:flex; align-items:center; margin-left:auto;">
                 <div id="timer-container"><span style="color:#333333;">0.0秒</span></div>
@@ -268,7 +278,8 @@
         var totalInputTokens = 0;
         var sessionWaltzCount = 0;
         var timeHistory = [];
-        var currentThinkingLevel = localStorage.getItem(THINKING_VAULT) === "high" ? "high" : "medium";
+        // デフォルトは常にミドル（起動時に引き継がない）
+        var currentThinkingLevel = "medium";
         
         // ▼棚の永続化とチェック状態の読み込み
         var postedFiles = [];
@@ -466,16 +477,15 @@
 
         function updateThinkingUI() {
             if (currentThinkingLevel === "high") {
-                thinkingBtn.textContent = "HIGH";
+                thinkingBtn.textContent = "現在：HIGH（深考）";
                 thinkingBtn.className = "mode-high";
             } else {
-                thinkingBtn.textContent = "MED";
+                thinkingBtn.textContent = "現在：MEDIUM（標準）";
                 thinkingBtn.className = "mode-med";
             }
         }
         thinkingBtn.onclick = function() {
             currentThinkingLevel = currentThinkingLevel === "high" ? "medium" : "high";
-            localStorage.setItem(THINKING_VAULT, currentThinkingLevel);
             updateThinkingUI();
         };
 
@@ -802,10 +812,11 @@
             var savedInTokens = localStorage.getItem(INPUT_TOKEN_VAULT); if (savedInTokens) totalInputTokens = parseInt(savedInTokens);
             var savedWaltz = localStorage.getItem(WALTZ_COUNT_VAULT); if (savedWaltz) sessionWaltzCount = parseInt(savedWaltz);
             
-            // 旧・明示的キャッシュの残骸掃除
+            // 旧・明示的キャッシュおよび旧・思考レベル保存の残骸掃除
             localStorage.removeItem("gemini_cache_name");
             localStorage.removeItem("gemini_cache_length");
             localStorage.removeItem("gemini_cache_expiry");
+            localStorage.removeItem(THINKING_VAULT);
 
             updateThinkingUI();
             updateTokenTotalsUI();
