@@ -827,7 +827,7 @@
             } catch(e) { console.error("メモ読込エラー", e); }
 
             try {
-                var chatSnap = await db.collection("chats").orderBy("id", "desc").limit(500).get();
+                var chatSnap = await db.collection("chats").orderBy("id", "desc").limit(300).get();
                 chatLogArray = [];
                 chatSnap.forEach(doc => { chatLogArray.push(doc.data()); });
                 chatLogArray.sort((a, b) => a.id - b.id);
